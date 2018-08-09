@@ -1,7 +1,10 @@
 == Thinkster's RealWorld Conduit Application
 
+== Thinkster's RealWorld Conduit Application
+
 == Eclipse Vert.x
 
+== Dependencies
 == Postman
 === Testing API's with Postman
 === Testing API's with Chrome
