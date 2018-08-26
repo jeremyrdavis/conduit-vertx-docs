@@ -1,0 +1,4 @@
+== Outline
+
+=== Clone a seed repo
+The seed repo should have the pom already built out and contain a "solutions" folder with each step

@@ -1,7 +1,40 @@
 = Step 1 : Getting Started
 
-== Thinkster's RealWorld Conduit Application
+== Clone the Vert.x Starter Project
+git clone https://github.com/vert-x3/vertx-maven-starter.git== Add Fabric8 Mvn Plugin
+rename the folder to "vertx-conduit-dev" from "vertx-maven-starter"
+delete the .git folder
+initialize a project in the current folder 
 
-== Eclipse Vert.x
+Create a repository in Github
+git remote add origin https://github.com/jeremyrdavis/vertx-conduit-dev.git
+git push -u origin master
+git checkout -b step-01
 
-== Dependencies
+Open pom.xml and change the package and project name:
+`
+  <groupId>io.vertx.conduit</groupId>
+  <artifactId>vertx-conduit</artifactId>
+  <version>1.0-SNAPSHOT</version>
+`
+== Launch our first Verticle
+
+=== Compile
+mvn clean package
+java -jar ./target/vertx-conduit-1.0-SNAPSHOT-fat.jar
+Open http://localhost:8080/
+You should see, "Hello, Vert.x!"
+Ctrl + c to stop the server
+
+=== redeploy.sh
+./redeploy.sh or redeploy.bat
+Open src/main/java/io/vertx/start/MainVerticle
+Open http://localhost:8080/
+You should see, "Hello, Vert.x!"
+Change the "Hello, Vert.x" text to "Hello, Conduit"
+Check your browser again.  You should see, "Hello, Conduit"
+Ctrl + c to quit the process
+
+== Refactor the package name
+Change the package structure to "io.vertx.thinkster.conduit"
+Be sure to change the redeploy file

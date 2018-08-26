@@ -3,3 +3,17 @@
 == Tasks
 
 === Creating an API
+
+=== Creating the Domain Model
+==== Errors
+==== User
+Actual Profile
+Public Profile
+==== Registration
+==== Login
+==== Article
+==== Comments
+==== Tags
+
+=== Authentication
+=== Implementing the API

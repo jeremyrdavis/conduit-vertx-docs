@@ -1,0 +1,69 @@
+= Step 02 : Our first Endpoint
+
+The first endpoint we will implement is the Authentication endpoint
+https://github.com/gothinkster/realworld/blob/master/api/README.md
+
+POST /api/users/login
+
+Input:
+{
+  "user":{
+    "email": "jake@jake.jake",
+    "password": "jakejake"
+  }
+}
+
+Expected Return:
+{
+  "user": {
+    "email": "jake@jake.jake",
+    "token": "jwt.token.here",
+    "username": "jake",
+    "bio": "I work at statefarm",
+    "image": null
+  }
+}
+
+== Add Vertx-Web
+
+Add the following to your pom.xml:
+`
+<dependency>
+  <groupId>io.vertx</groupId>
+  <artifactId>vertx-web</artifactId>
+</dependency>
+`
+Delete the contents of the start method
+Add the following argument to the start method: "Future<Void> future"
+
+Build out the start method with the following:
+
+`
+    Router router = Router.router(vertx);
+    router.route("/").handler(this::indexHandler);
+
+    // Create the HTTP server and pass the "accept" method to the request handler.
+    vertx
+      .createHttpServer()
+      .requestHandler(router::accept)
+      .listen(8080, result -> {
+        if (result.succeeded()) {
+          future.complete();
+        }else {
+          future.fail(result.cause());
+        }
+      });
+`
+mvn clean test
+
+== /api/users/login
+
+Steps
+1. Add a new route
+2. Attach a handler to the route
+3. Implement the handler
+
+Add a new route: 
+`
+    router.route("/api/users/login").handler(this::loginHandler);
+`
