@@ -19,8 +19,11 @@ git init (5)
 === Create a Remote Repository (Optional, but Recommended)
 Keeping a remote copy for yourself is useful while making changes
 Create a repository in Github
+[source,shell]
+....
 git remote add origin https://github.com/[YOUR GITHUB NAME]/thinkster-vertx.git
 git push -u origin master
+....
 
 === IDE Time
 
