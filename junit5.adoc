@@ -14,12 +14,14 @@ Open up the pom.xml
 Change the artifactId to : vertx-junit5-spike
 Change the main.verticle to: <main.verticle>io.vertx.spke.MainVerticle</main.verticle>
 Add the following property:
-`
+[source,xml]
+----
 <junit-jupiter.version>5.1.0</junit-jupiter.version>
-`
+----
+
 Remove the dependencies on vertx-junit and junit 4.12
 Add:
-[source,java]
+[source,xml]
 ----
     <dependency>
       <groupId>io.vertx</groupId>
@@ -28,13 +30,13 @@ Add:
     </dependency>
 ----
 Add:
-
-`
+[source,xml]
+----
 <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web-client</artifactId>
 </dependency>
-`
+----
 
 Add the maven surefire plugin under plugins:
 [source,xml]
