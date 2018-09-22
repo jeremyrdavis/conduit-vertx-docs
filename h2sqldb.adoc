@@ -1,4 +1,5 @@
 = HSQL DB
+:source-highlighter: coderay
 
 == About
 http://hsqldb.org/
