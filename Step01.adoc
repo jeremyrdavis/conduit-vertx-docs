@@ -25,6 +25,26 @@ git remote add origin https://github.com/[YOUR GITHUB NAME]/thinkster-vertx.git
 git push -u origin master
 ....
 
+=== Update the pom
+Using the text editor of your choice:
+1. Open up pom.xml
+2. Change the groupId to: io.vertx.thinkster
+3. Change the artifactId to : vertx-thinkster
+4. Change the main.verticle to: <main.verticle>io.vertx.thinkster.MainVerticle</main.verticle>
+
+The result should look like this:
+[source,xml]
+....
+<groupId>io.vertx.thinkster</groupId>
+  <artifactId>vertx-thinkster</artifactId>
+  <version>1.0-SNAPSHOT</version>
+
+  <properties>
+    <vertx.version>3.5.2</vertx.version>
+    <main.verticle>io.vertx.thinkster.MainVerticle</main.verticle>
+  </properties>
+....
+
 === IDE Time
 
 ==== IntelliJ
