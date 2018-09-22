@@ -1,29 +1,56 @@
 = Step 1 : Getting Started
+:source-highlighter: coderay
 
 == Clone the Vert.x Starter Project
-git clone https://github.com/vert-x3/vertx-maven-starter.git
+[source,shell]
+----
+git clone https://github.com/vert-x3/vertx-maven-starter.git (1)
+mv vertx-maven-starter/ thinkster-vertx (2)
+cd vertx-junit5-spike (3)
+rm -Rf .git (4)
+git init (5)
+----
+1. This is a basic Vert.x project that we will use as a starting point
+2. Rename the basic project to "thinkster-vertx."  You can use a different name of course, but make sure you stay consistent during the workshop.
+3. Change into the project directory
+4. Delete the existing Git repository
+5. Initialize a new Git repository to hold our changes
 
-== Add Fabric8 Mvn Plugin
-rename the folder to "vertx-conduit-dev" from "vertx-maven-starter"
-delete the .git folder
-initialize a project in the current folder 
-
+=== Create a Remote Repository (Optional, but Recommended)
+Keeping a remote copy for yourself is useful while making changes
 Create a repository in Github
-git remote add origin https://github.com/jeremyrdavis/vertx-conduit-dev.git
+git remote add origin https://github.com/[YOUR GITHUB NAME]/thinkster-vertx.git
 git push -u origin master
+
+=== IDE Time
+
+==== IntelliJ
+==== Eclipse
+==== Visual Studio Code
+
+=== Real Work!
+[source,shell]
+....
 git checkout -b step-01
+....
 
 Open pom.xml and change the package and project name:
-`
+[source,xml]
+....
   <groupId>io.vertx.conduit</groupId>
   <artifactId>vertx-conduit</artifactId>
   <version>1.0-SNAPSHOT</version>
-`
+....
+
 == Launch our first Verticle
 
 === Compile
+[source,shell]
+....
 mvn clean package
 java -jar ./target/vertx-conduit-1.0-SNAPSHOT-fat.jar
+....
+
 Open http://localhost:8080/
 You should see, "Hello, Vert.x!"
 Ctrl + c to stop the server
