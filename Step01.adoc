@@ -48,6 +48,23 @@ The result should look like this:
 === IDE Time
 
 ==== IntelliJ
+
+==== About
+https://www.jetbrains.com/idea/
+
+==== Creating a new project
+1. Choose "File -> New -> Project From Existing Sources..."
+2. Browse to the directory holding your project and choose the directory itself and choose "Open."  This will start an import wizard
+3. "Maven" should already be selected in the "Import Project" dialog.  Click, "Next"
+4. "Root Directory" should be highlighted with the directory of your project.  Click, "Next"
+5. "redhat-jboss-ga" and "techpreview-all-repository" should already be selected.  Click, "Next"
+6. "io.vertx.starter:vertx-thinkster:1.0-SNAPSHOT
+7.  Be sure to select JDK 1.8.  Click, "Next"
+8.  Project name should be "vertx-thinkster."  Click, "Finish"
+9.  You can open the project in a new window or use your existing one
+
+We will be using mvn directly for this tutorial.  You can run the following terminal commands in IntelliJ's Terminal window if you like.
+
 ==== Eclipse
 ==== Visual Studio Code
 
