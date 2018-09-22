@@ -1,4 +1,19 @@
 == Outline
 
+=== Topics
+
+Asynchronous and Reactive development
+Thinkster.io and Conduit
+Vertx-Web
+Message Bus
+Building a REST API
+Authentication with JWT
+Database access and Mongo
+
 === Clone a seed repo
 The seed repo should have the pom already built out and contain a "solutions" folder with each step
+
+=== Create an HTTP Server
+Create a basic "Hello, World" message, package and run it
+
+=== Implement the Login Endpoint

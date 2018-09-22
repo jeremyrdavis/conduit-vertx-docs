@@ -1,7 +1,9 @@
 = Step 1 : Getting Started
 
 == Clone the Vert.x Starter Project
-git clone https://github.com/vert-x3/vertx-maven-starter.git== Add Fabric8 Mvn Plugin
+git clone https://github.com/vert-x3/vertx-maven-starter.git
+
+== Add Fabric8 Mvn Plugin
 rename the folder to "vertx-conduit-dev" from "vertx-maven-starter"
 delete the .git folder
 initialize a project in the current folder 
@@ -37,4 +39,4 @@ Ctrl + c to quit the process
 
 == Refactor the package name
 Change the package structure to "io.vertx.thinkster.conduit"
-Be sure to change the redeploy file
+NOTE: Be sure to change the redeploy file

@@ -1,0 +1,23 @@
+= HSQL DB
+
+== About
+http://hsqldb.org/
+
+== Install
+git clone https://github.com/vert-x3/vertx-maven-starter.git
+mv vertx-maven-starter/ vertx-hsqldb-spike
+cd vertx-hsqldb-spike
+rm -Rf .git
+=== Add the artifact to the pom
+Open up the pom.xml
+Change the artifactId to : vertx-hsqldb-spike
+Change the main.verticle to: <main.verticle>io.vertx.spke.MainVerticle</main.verticle>
+
+Add:
+`
+<dependency>
+    <groupId>org.hsqldb</groupId> 
+    <artifactId>hsqldb</artifactId> 
+    <version>2.3.4</version>
+</dependency>
+`

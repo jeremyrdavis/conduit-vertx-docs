@@ -56,14 +56,177 @@ Build out the start method with the following:
 `
 mvn clean test
 
+== Create our Users domain model
+
+`
+package io.vertx.thinkster.conduit.domain;
+
+public class User {
+
+  private String email;
+
+  private String token;
+
+  private String username;
+
+  private String bio;
+
+  private String image;
+
+  public User(String email, String token, String username, String bio, String image) {
+    this.email = email;
+    this.token = token;
+    this.username = username;
+    this.bio = bio;
+    this.image = image;
+  }
+
+  @Override
+  public String toString() {
+    return "User{" +
+      "email='" + email + '\'' +
+      ", token='" + token + '\'' +
+      ", username='" + username + '\'' +
+      ", bio='" + bio + '\'' +
+      ", image='" + image + '\'' +
+      '}';
+  }
+
+  public User(String email) {
+    this.email = email;
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
+  }
+
+  public String getToken() {
+    return token;
+  }
+
+  public void setToken(String token) {
+    this.token = token;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public void setBio(String bio) {
+    this.bio = bio;
+  }
+
+  public String getImage() {
+    return image;
+  }
+
+  public void setImage(String image) {
+    this.image = image;
+  }
+}
+
+`
+
 == /api/users/login
 
 Steps
-1. Add a new route
-2. Attach a handler to the route
-3. Implement the handler
+
+* Create the Users object of our domain model
+* Add a new route
+* Attach a handler to the route
+* Implement the handler
+* Validate the required fields
+* Extract the posted data
+* Lookup the user (we will stub this out for now)
+* Return the expected result
+
 
 Add a new route: 
 `
     router.route("/api/users/login").handler(this::loginHandler);
 `
+
+Implement loginHandler
+`
+    User user = new User();
+    user.setUsername("vertx-user");
+    user.setBio("Mock bio");
+    user.setEmail("user@vertx.io");
+    user.setToken("token");
+
+    HttpServerResponse response = routingContext.response();
+    response
+      .putHeader("content-type", "text/html")
+      .end(Json.encodePrettily(user));
+
+`
+
+./redeploy.sh
+
+== Postman and Newman
+update the variables with "localhost:8080/api"
+pass the first Postman test Auth/login
+
+== Handle the actual request values
+
+Create a domain model to handle errors:
+`
+package io.vertx.thinkster.conduit.domain;
+
+public class ConduitError {
+
+  private Error error;
+
+  public ConduitError() {
+
+    this.error = new Error("Something went wrong");
+
+  }
+
+  public ConduitError(String body) {
+
+    this.error = new Error(body);
+  }
+
+  public Error getError() {
+    return error;
+  }
+
+  public void setError(Error error) {
+    this.error = error;
+  }
+
+  private class Error {
+
+    private String body;
+
+    public Error(String body) {
+      this.body = body;
+    }
+
+    public String getBody() {
+      return body;
+    }
+
+    public void setBody(String body) {
+      this.body = body;
+    }
+
+  }
+
+}
+`
+
+Create a domain model to capture the login informaiton

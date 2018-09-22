@@ -1,0 +1,95 @@
+= HSQL DB
+:source-highlighter: coderay
+
+== About
+
+
+== Install
+git clone https://github.com/vert-x3/vertx-maven-starter.git
+mv vertx-maven-starter/ vertx-junit5-spike
+cd vertx-junit5-spike
+rm -Rf .git
+=== Add the artifact to the pom
+Open up the pom.xml
+Change the artifactId to : vertx-junit5-spike
+Change the main.verticle to: <main.verticle>io.vertx.spke.MainVerticle</main.verticle>
+Add the following property:
+`
+<junit-jupiter.version>5.1.0</junit-jupiter.version>
+`
+Remove the dependencies on vertx-junit and junit 4.12
+Add:
+[source,java]
+----
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+----
+Add:
+
+`
+<dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web-client</artifactId>
+</dependency>
+`
+
+Add the maven surefire plugin under plugins:
+[source,xml]
+....
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.0</version>
+      </plugin>
+....
+
+== First test
+
+Delete the contents of MainVerticleTest
+
+Add the following annotations to the class:
+@DisplayName("Spike Test")
+@ExtendWith(VertxExtension.class)
+
+Create the following test:
+`
+  @Test
+  @DisplayName("Server Started Test")
+  void testServerStart(Vertx vertx, VertxTestContext testContext) {
+    WebClient webClient = WebClient.create(vertx);
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+    }));
+  }
+
+`
+Run the test.  This should pass.
+
+Update the test and fail
+
+Add a new Checkpoint below the initial one:
+[source,java]
+....
+    Checkpoint requestCheckpoint = testContext.checkpoint();
+....
+
+Add the following below the deploymentCheckpoint.flag():
+[source,java]
+....
+      webClient.get(8080, "localhost", "/")
+        .as(BodyCodec.string())
+        .send(testContext.succeeding(resp -> {
+          testContext.verify(() -> {
+            assertEquals(200, resp.statusCode());
+            assertEquals("Hello, World!", resp.body());
+            requestCheckpoint.flag();
+          });
+        }));
+....
+
+This should fail.  Change the expected response to "Hello, Vert.x!" and it should pass

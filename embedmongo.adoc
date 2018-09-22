@@ -1,0 +1,21 @@
+= Embedded Mongo DB
+
+== About
+https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo
+
+== Install
+
+=== Clone the project
+git clone https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo
+mvn clean install
+
+=== Add the artifact to the pom
+Open up the pom.xml
+Add:
+`
+<dependency>
+	<groupId>de.flapdoodle.embed</groupId>
+	<artifactId>de.flapdoodle.embed.mongo</artifactId>
+	<version>2.1.2-SNAPSHOT</version>
+</dependency>
+`
