@@ -35,7 +35,7 @@ Using the text editor of your choice:
 The result should look like this:
 [source,xml]
 ....
-<groupId>io.vertx.thinkster</groupId>
+  <groupId>io.vertx.thinkster</groupId>
   <artifactId>vertx-thinkster</artifactId>
   <version>1.0-SNAPSHOT</version>
 
@@ -68,42 +68,54 @@ We will be using mvn directly for this tutorial.  You can run the following term
 ==== Eclipse
 ==== Visual Studio Code
 
-=== Real Work!
+== Real Work!
+
+=== Build and test 
+
+For simplicity's sake we will use maven to build and test.  You are welcome to use your IDE's mechanism if you prefer, but we recommend checking every now again with Maven on the command line just to be sure your IDE hasn't added something magical in the background. 
+
 [source,shell]
 ....
-git checkout -b step-01
+mvn clean package
 ....
 
-Open pom.xml and change the package and project name:
-[source,xml]
-....
-  <groupId>io.vertx.conduit</groupId>
-  <artifactId>vertx-conduit</artifactId>
-  <version>1.0-SNAPSHOT</version>
-....
+You should successfully build and pass the default test.
 
-== Launch our first Verticle
+Open up the "target" directory, and you will see 2 jar files.  We will be running our application from the "-fat.jar"
 
-=== Compile
+=== Launch our first Verticle
+
+Let's fire up our first verticle!
+
+NOTE: Verticles are the most basic unit of work in Vert.x
+
+
 [source,shell]
 ....
 mvn clean package
 java -jar ./target/vertx-conduit-1.0-SNAPSHOT-fat.jar
 ....
 
-Open http://localhost:8080/
-You should see, "Hello, Vert.x!"
+Open http://localhost:8080.  You should see, "Hello, Vert.x!"
+
 Ctrl + c to stop the server
 
 === redeploy.sh
+Our default project contains 2 redeploy files, "redeploy.sh" and "redeploy.bat," that will keep your application running and redploy when you make changes.
+
+Start your application with the redeploy scripts:
+[source,shell]
+....
 ./redeploy.sh or redeploy.bat
-Open src/main/java/io/vertx/start/MainVerticle
+....
+
 Open http://localhost:8080/
-You should see, "Hello, Vert.x!"
+You should see the same text you saw when running the fat jar, "Hello, Vert.x!"
+
+Open src/main/java/io/vertx/start/MainVerticle.java
+
 Change the "Hello, Vert.x" text to "Hello, Conduit"
 Check your browser again.  You should see, "Hello, Conduit"
-Ctrl + c to quit the process
 
-== Refactor the package name
-Change the package structure to "io.vertx.thinkster.conduit"
-NOTE: Be sure to change the redeploy file
+Stop your application with Ctrl + c
+
