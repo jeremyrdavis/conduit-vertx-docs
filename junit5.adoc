@@ -5,15 +5,21 @@
 
 
 == Install
+[source,shell]
+----
 git clone https://github.com/vert-x3/vertx-maven-starter.git
 mv vertx-maven-starter/ vertx-junit5-spike
 cd vertx-junit5-spike
 rm -Rf .git
+----
+
 === Add the artifact to the pom
-Open up the pom.xml
-Change the artifactId to : vertx-junit5-spike
-Change the main.verticle to: <main.verticle>io.vertx.spke.MainVerticle</main.verticle>
+1. Open up the pom.xml
+2. Change the artifactId to : vertx-junit5-spike
+3. Change the main.verticle to: <main.verticle>io.vertx.spke.MainVerticle</main.verticle>
+
 Add the following property:
+
 [source,xml]
 ----
 <junit-jupiter.version>5.1.0</junit-jupiter.version>
@@ -52,11 +58,15 @@ Add the maven surefire plugin under plugins:
 Delete the contents of MainVerticleTest
 
 Add the following annotations to the class:
+[source,java]
+....
 @DisplayName("Spike Test")
 @ExtendWith(VertxExtension.class)
+....
 
 Create the following test:
-`
+[source,java]
+....
   @Test
   @DisplayName("Server Started Test")
   void testServerStart(Vertx vertx, VertxTestContext testContext) {
@@ -68,8 +78,8 @@ Create the following test:
       deploymentCheckpoint.flag();
     }));
   }
+....
 
-`
 Run the test.  This should pass.
 
 Update the test and fail
