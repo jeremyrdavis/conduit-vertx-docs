@@ -29,9 +29,32 @@ Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our first step i
 
 [source,java,linenums]
 ....
-    import io.vertx.ext.web.Router;
+    import io.vertx.ext.web.Router; <1>
     ...
-    Router router = Router.router(vertx);
-    router.route("/").handler(this::indexHandler);
+    Router router = Router.router(vertx); <2>
+    router.route("/").handler(this::indexHandler); <3>
 ....
 
+<1> Import the Routerfrom the "io.vertx.ext.web" package.  There is another Router in the "io.vertx.reactivex.ext.web" package; we don't want that one yet
+<2> Instantiate the Router
+<3> Handle the root endpoint, "/"
+
+Obviously, this code won't compile because we don't have a method, "indexHandler."  So let's create that method:
+
+[source,java]
+....
+  private void indexHandler(RoutingContext routingContext) { <1>
+    HttpServerResponse response = routingContext.response(); <2>
+    response
+      .putHeader("content-type", "text/html")                <3>
+      .end("Hello CodeOne!");                                <4>
+  }
+....
+
+
+<1> We pass in an Object "RoutingContext" to our method.   A RoutingContext represents the context for the handling of a request in Vert.x-Web.  A new instance is created for each HTTP request that is received in the Router.accept(HttpServerRequest) of the router.  The same instance is passed to any matching request or failure handlers during the routing of the request or failure.  The context provides access to the HttpServerRequest and HttpServerResponse and allows you to maintain arbitrary data that lives for the lifetime of the context such as the Session, cookies and body for the request.  Contexts are discarded once they have been routed to the handler for the request.
+<2> We create the response
+<3> Set the Content-Type of our response
+<4> Set the body of our response
+
+ 
