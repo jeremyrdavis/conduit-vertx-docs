@@ -89,7 +89,7 @@ Obviously, our code won't compile at the moment because we don't have a method, 
   private void indexHandler(RoutingContext routingContext) { <1>
     HttpServerResponse response = routingContext.response(); <2>
     response
-      .putHeader("content-type", "text/html")                <3>
+      .putHeader("Content-Type", "text/html")                <3>
       .end("Hello CodeOne!");                                <4>
   }
 ....
