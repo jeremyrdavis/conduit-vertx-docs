@@ -33,12 +33,15 @@ Expected Return:
 == Add Vertx-Web
 
 Add the following to your pom.xml:
-`
+
+[code,xml]
+...
 <dependency>
   <groupId>io.vertx</groupId>
   <artifactId>vertx-web</artifactId>
 </dependency>
-`
+...
+
 Delete the contents of the start method
 Add the following argument to the start method: "Future<Void> future"
 
