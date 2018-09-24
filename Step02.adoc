@@ -30,17 +30,26 @@ Expected Return:
   }
 }
 ....
+
 == Add Vertx-Web
 
-Add the following to your pom.xml:
+https://vertx.io/docs/vertx-web/java/
+
+We will be using Vert.x-Web to build our endpoints.  The vertx-web dependency is already in your project's pom.xml (line 36.)
+
+Vert.x-Web is as a Swiss Army Knife for building modern, scalable, web apps.  Vert.x core provides a fairly low level set of functionality for handling HTTP, and for some applications that will be sufficient.  Vert.x-Web adds functionality for building real web applications and is especially awesome for building REST APIs and REST based microservices.
+
+Vert.x-Web is influenced by Express in the NodeJS world and Sinatra in the Ruby world so if you have used either of those projects you will feel right at home. 
+
+Vert.x-Web is in the vertx-conduit-starter pom.xml on line 36:
 
 [code,xml]
-...
+....
 <dependency>
   <groupId>io.vertx</groupId>
   <artifactId>vertx-web</artifactId>
 </dependency>
-...
+....
 
 Delete the contents of the start method
 Add the following argument to the start method: "Future<Void> future"
