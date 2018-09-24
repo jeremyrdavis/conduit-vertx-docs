@@ -1,13 +1,37 @@
 = Step 02 : REST Basics with Vert.x-Web
 :source-highlighter: coderay
 
+== Vert.x Core
+
+Vert.x' core functionality contains an HTTP server.  The example app you cloned spins one up on port 8080 and returns a simple "Hello, Vert.x" (code below.)
+
+[source,java]
+....
+package io.vertx.conduit;
+
+import io.vertx.core.AbstractVerticle;
+
+public class MainVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() {
+    vertx.createHttpServer()
+        .requestHandler(req -> req.response().end("Hello Vert.x!"))
+        .listen(8080);
+  }
+
+}
+....
+
+We need more than a single endpoint saying, "Hello."
+
 == Vert.x-Web
 
 https://vertx.io/docs/vertx-web/java/
 
 We will be using Vert.x-Web to build our endpoints.  
 
-Vert.x-Web is in the vertx-conduit-starter pom.xml on line 36:
+Vert.x-Web is one of many Vert.x modules that extend the core toolkit.  The dependency already in your pom.xml.  You can see it on line 36:
 
 [source,xml]
 ....
@@ -21,8 +45,6 @@ Vert.x-Web is as a Swiss Army Knife for building modern, scalable, web apps.  Ve
 
 Vert.x-Web is influenced by Express in the NodeJS world and Sinatra in the Ruby world so if you have used either of those projects you will feel right at home. 
 
-MainVerticle.java currently creates an HTTP server, listens on port 8080 and returns "Hello Vert.x!" using the Vert.x's core HTTP functionality.  Since we will be using the Vert.x-Web package our first step is to delete this basic implementation and begin building our APIs.
-
 === Vert.x-Web Router
 
 Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our initial code uses Vert.x's core HTTP server to return a single endpoint.  We will update our MainVerticle class to use the Vert.x-Web Router instead.
@@ -30,6 +52,8 @@ Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our initial code
 ==== Future<Void>
 
 The first thing we will do is to make sure that our Router is correctly set up and working when we start the application.  We will pass an io.vertx.core.Future Object to MainVerticle's start() method:
+
+WARNING: Your IDE will probably automatically import classes while you are typing.  Make sure that the imported classes are the one in the examples.  Your IDE may not grab the correct "Future."
 
 [source,java]
 ....
