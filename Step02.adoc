@@ -1,4 +1,5 @@
 = Step 02 : Our first Endpoint
+:source-highlighter: coderay
 
 The first endpoint we will implement is the Authentication endpoint
 https://github.com/gothinkster/realworld/blob/master/api/README.md
@@ -6,14 +7,19 @@ https://github.com/gothinkster/realworld/blob/master/api/README.md
 POST /api/users/login
 
 Input:
+[code,json]
+....
 {
   "user":{
     "email": "jake@jake.jake",
     "password": "jakejake"
   }
 }
+....
 
 Expected Return:
+[code,json]
+....
 {
   "user": {
     "email": "jake@jake.jake",
@@ -23,7 +29,7 @@ Expected Return:
     "image": null
   }
 }
-
+....
 == Add Vertx-Web
 
 Add the following to your pom.xml:
@@ -38,7 +44,8 @@ Add the following argument to the start method: "Future<Void> future"
 
 Build out the start method with the following:
 
-`
+[code,java]
+....
     Router router = Router.router(vertx);
     router.route("/").handler(this::indexHandler);
 
@@ -53,12 +60,17 @@ Build out the start method with the following:
           future.fail(result.cause());
         }
       });
-`
+....
+
+[code,shell]
+....
 mvn clean test
+....
 
 == Create our Users domain model
 
-`
+[code,java]
+....
 package io.vertx.thinkster.conduit.domain;
 
 public class User {
@@ -137,7 +149,7 @@ public class User {
   }
 }
 
-`
+....
 
 == /api/users/login
 
@@ -154,12 +166,16 @@ Steps
 
 
 Add a new route: 
-`
+
+[code,java]
+....
     router.route("/api/users/login").handler(this::loginHandler);
-`
+....
 
 Implement loginHandler
-`
+
+[code,java]
+....
     User user = new User();
     user.setUsername("vertx-user");
     user.setBio("Mock bio");
@@ -170,8 +186,7 @@ Implement loginHandler
     response
       .putHeader("content-type", "text/html")
       .end(Json.encodePrettily(user));
-
-`
+....
 
 ./redeploy.sh
 
@@ -182,7 +197,9 @@ pass the first Postman test Auth/login
 == Handle the actual request values
 
 Create a domain model to handle errors:
-`
+
+[code,java]
+....
 package io.vertx.thinkster.conduit.domain;
 
 public class ConduitError {
@@ -227,6 +244,5 @@ public class ConduitError {
   }
 
 }
-`
+....
 
-Create a domain model to capture the login informaiton
