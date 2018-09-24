@@ -4,17 +4,15 @@
 == Clone the Vert.x Starter Project
 [source,shell]
 ----
-git clone https://github.com/vert-x3/vertx-maven-starter.git (1)
-mv vertx-maven-starter/ thinkster-vertx (2)
-cd vertx-junit5-spike (3)
-rm -Rf .git (4)
-git init (5)
+git clone https://github.com/jeremyrdavis/vertx-conduit-starter.git (1)
+cd vertx-conduit-starter (2)
+rm -Rf .git (3)
+git init (4)
 ----
-1. This is a basic Vert.x project that we will use as a starting point
-2. Rename the basic project to "thinkster-vertx."  You can use a different name of course, but make sure you stay consistent during the workshop.
-3. Change into the project directory
-4. Delete the existing Git repository
-5. Initialize a new Git repository to hold our changes
+* This is a basic Vert.x project that we will use as a starting point
+* Change into the project directory
+* Delete the existing Git repository
+* Initialize a new Git repository to hold our changes
 
 === Create a Remote Repository (Optional, but Recommended)
 Keeping a remote copy for yourself is useful while making changes
