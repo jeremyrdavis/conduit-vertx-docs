@@ -9,7 +9,7 @@ We will be using Vert.x-Web to build our endpoints.
 
 Vert.x-Web is in the vertx-conduit-starter pom.xml on line 36:
 
-[code,xml]
+[source,xml]
 ....
 <dependency>
   <groupId>io.vertx</groupId>
@@ -27,10 +27,10 @@ MainVerticle.java currently creates an HTTP server, listens on port 8080 and ret
 
 Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our first step is to add the Router to our start method.
 
-[code,java,linenums]
+[source,java,linenums]
 ....
     import io.vertx.ext.web.Router;
-
+    ...
     Router router = Router.router(vertx);
     router.route("/").handler(this::indexHandler);
 ....
