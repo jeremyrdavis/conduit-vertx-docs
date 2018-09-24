@@ -25,9 +25,26 @@ MainVerticle.java currently creates an HTTP server, listens on port 8080 and ret
 
 === Vert.x-Web Router
 
-Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our first step is to add the Router to our start method.
+Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our initial code uses Vert.x's core HTTP server to return a single endpoint.  We will update our MainVerticle class to use the Vert.x-Web Router instead.
 
-[source,java,linenums]
+==== Future<Void>
+
+The first thing we will do is to make sure that our Router is correctly set up and working when we start the application.  We will pass an io.vertx.core.Future Object to MainVerticle's start() method:
+
+[source,java]
+....
+import io.vertx.core.Future
+...
+  @Override
+  public void start(Future<Void> future) {
+....
+
+In our next step we will check with our future to verify that the Router is working correctly.
+
+==== Vert.x-Web Router
+Now its time to add the Router to our start method just above the existing code:
+
+[source,java]
 ....
     import io.vertx.ext.web.Router; <1>
     ...
@@ -35,11 +52,12 @@ Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our first step i
     router.route("/").handler(this::indexHandler); <3>
 ....
 
-<1> Import the Routerfrom the "io.vertx.ext.web" package.  There is another Router in the "io.vertx.reactivex.ext.web" package; we don't want that one yet
+What this code does is:
+<1> Import the Router from the "io.vertx.ext.web" package.  Be sure to use this package.  There is another Router in the "io.vertx.reactivex.ext.web" package; we don't want that one yet
 <2> Instantiate the Router
 <3> Handle the root endpoint, "/"
 
-The next step is to delegate handling the request to our router:
+The next step is to delegate handling the request to our router.  Modify the start method so that it mirrors the following:
 
 [source,java]
 ....
@@ -47,18 +65,24 @@ The next step is to delegate handling the request to our router:
     // Create the HTTP server and pass the "accept" method to the request handler.
     vertx
       .createHttpServer()
-      .requestHandler(router::accept)
-      .listen(8080, result -> {
-        if (result.succeeded()) {
-          future.complete();
+      .requestHandler(router::accept)  <1>
+      .listen(8080, result -> {        <2>
+        if (result.succeeded()) {     
+          future.complete();           <3>
         }else {
-          future.fail(result.cause());
+          future.fail(result.cause()); <4>
         }
       });
 ....
 
+<1> Instead of simply returning, "Hello, Vert.x!," we delegate to our newly created Router
+<2> We pass in a callback to the listen method that verifies our Roter is working correctly.  We do this by telling our Future that we succeeded or failed
+<3> future.complete() means we succeeded
+<4> future.fail(result.cause()) means we failed and should throw an error
 
-Obviously, this code won't compile because we don't have a method, "indexHandler."  So let's create that method:
+==== indexHanlder
+
+Obviously, our code won't compile at the moment because we don't have a method, "indexHandler."  So let's create that method:
 
 [source,java]
 ....
