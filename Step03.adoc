@@ -39,6 +39,25 @@ Vert.x-Web contains a "Router" that maps URLs to Java methods.  Our first step i
 <2> Instantiate the Router
 <3> Handle the root endpoint, "/"
 
+The next step is to delegate handling the request to our router:
+
+[source,java]
+....
+
+    // Create the HTTP server and pass the "accept" method to the request handler.
+    vertx
+      .createHttpServer()
+      .requestHandler(router::accept)
+      .listen(8080, result -> {
+        if (result.succeeded()) {
+          future.complete();
+        }else {
+          future.fail(result.cause());
+        }
+      });
+....
+
+
 Obviously, this code won't compile because we don't have a method, "indexHandler."  So let's create that method:
 
 [source,java]
