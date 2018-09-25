@@ -81,7 +81,6 @@ Now its time to add the Router to our start method just above the existing code:
     router.route("/").handler(this::indexHandler); <3>
 ....
 
-What this code does is:
 <1> Import the Router from the "io.vertx.ext.web" package.  Be sure to use this package.  There is another Router in the "io.vertx.reactivex.ext.web" package; we don't want that one yet
 <2> Instantiate the Router
 <3> Handle the root endpoint, "/"
