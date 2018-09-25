@@ -1,4 +1,4 @@
-= Step 02 : Our first Endpoint
+= Step 03 : Our first Endpoint
 :source-highlighter: coderay
 
 The first endpoint we will implement is the Authentication endpoint
@@ -51,15 +51,36 @@ Vert.x-Web is in the vertx-conduit-starter pom.xml on line 36:
 </dependency>
 ....
 
-Delete the contents of the start method
-Add the following argument to the start method: "Future<Void> future"
+The first thing we will do is add the following argument to the start method: "Future<Void> future."  By passing in a Vert.x Future we will be able to verify that the Verticle started correctly.
 
-Build out the start method with the following:
+[code, java]
+....
+public void start(Future<Void> future)
+....
+
+If your IDE didn't pick up the import add io.vertx.core.Future to the imports at the top of the class:
+
+[code, java]
+....
+import io.vertx.core.Future;
+....
+
+The next thing we will do is to use the Vert.x-Web Router to handle our endpoints.  Delete everything in the existing start method.  Then add the Router:
 
 [code,java]
 ....
     Router router = Router.router(vertx);
     router.route("/").handler(this::indexHandler);
+....
+
+Again, in case your IDE didn't automatically import the Router for you add the following:
+
+[code,java]
+....
+....
+
+[code,java]
+....
 
     // Create the HTTP server and pass the "accept" method to the request handler.
     vertx
