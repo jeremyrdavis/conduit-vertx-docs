@@ -62,13 +62,26 @@ public class AuthenticationEndpointTest {
 
 [source,java]
 ....
-    WebClient webClient = WebClient.create(vertx);                    <1>
-
-    Checkpoint deploymentCheckpoint = testContext.checkpoint();       <2>
-    Checkpoint authenticationCheckpoint = testContext.checkpoint();   <3>
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {              <1>             
+      WebClient webClient = WebClient.create(vertx);                                     <2>
+      webClient.post(8080, "localhost", "/api/users/login")                              <3>
+        .sendJsonObject(new JsonObject()                                                 <4>
+          .put("user", new JsonObject()
+            .put("email", "jake@jake.jake")
+            .put("password", "jakejake")
+          ), response -> testContext.verify(() -> {                                      <5>
+          JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");  <6>
+          assertEquals(200, response.result().statusCode());                             <7>
+          assertEquals("jake@jake.jake", user.getString("email"));                       <8>
+          assertEquals("jakejake", user.getString("password"));
+          assertEquals("jwt.token.here", user.getString("token"));
+          assertEquals("jake", user.getString("username"));
+          assertEquals("I work at statefarm", user.getString("bio"));
+          assertEquals("", user.getString("image"));
+          testContext.completeNow();                                                     <9>
+        }));
+    }));
 ....
-<1> Create the WebClient to call our endpoint
-<2> <3> Create the Checkpoints so that the test exits
 
 ==== JsonObject
 
@@ -104,6 +117,29 @@ public class AuthenticationEndpointTest {
           assertEquals(expectedReturn, resp.result().bodyAsJsonObject());
         });
     }));
+....
+
+=== Run the Test
+
+[source,shell]
+....
+mvn clean test
+...
+[ERROR] Failures:
+[ERROR]   AuthenticationEndpointTest.testSuccessfulAuthentication org.opentest4j.AssertionFailedError: expected: <{"user":{"email":"jake@jake.jake","password":"jakejake","token":"jwt.token.here","username":"jake","bio":"I work at statefarm","image":""}}> but was: <null>
+[INFO]
+[ERROR] Tests run: 2, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+....
+
+== Add the Route and Handler
+
+[source,java]
+....
+    router.route("/api/users/login").handler(this::loginHandler);
 ....
 
 == Create our Users domain model
