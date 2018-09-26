@@ -1,7 +1,12 @@
 = Step 03 : Our first Endpoint
 :source-highlighter: coderay
 
-The first endpoint we will implement is the Authentication endpoint
+== KeyTerms
+
+JsonObject
+
+== Authentication (Login) Endpoint
+The first endpoint we will implement is the Authentication endpoint, documented here:
 https://github.com/gothinkster/realworld/blob/master/api/README.md
 
 POST /api/users/login
@@ -30,79 +35,80 @@ Expected Return:
   }
 }
 ....
+== Approach
 
-== Add Vertx-Web
+Our first step will be to create a test that attempts to authenticate using the example user, "jake@jake.jake"
+We will then build the code to pass the test
+* create a REST endpoint that accepts JSON in the expected format
+* stub out the authentication and simply check hard coded values
+* return the expected JSON User representation
 
-https://vertx.io/docs/vertx-web/java/
+== Test First!
 
-We will be using Vert.x-Web to build our endpoints.  The vertx-web dependency is already in your project's pom.xml (line 36.)
+Create a new class, AuthenticationEndpointTest, in the io.vertx.conduit package.  Annotate the class with:
 
-Vert.x-Web is as a Swiss Army Knife for building modern, scalable, web apps.  Vert.x core provides a fairly low level set of functionality for handling HTTP, and for some applications that will be sufficient.  Vert.x-Web adds functionality for building real web applications and is especially awesome for building REST APIs and REST based microservices.
-
-Vert.x-Web is influenced by Express in the NodeJS world and Sinatra in the Ruby world so if you have used either of those projects you will feel right at home. 
-
-Vert.x-Web is in the vertx-conduit-starter pom.xml on line 36:
-
-[code,xml]
+[source,java]
 ....
-<dependency>
-  <groupId>io.vertx</groupId>
-  <artifactId>vertx-web</artifactId>
-</dependency>
-....
+import io.vertx.junit5.VertxExtension;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-The first thing we will do is add the following argument to the start method: "Future<Void> future."  By passing in a Vert.x Future we will be able to verify that the Verticle started correctly.
-
-[code, java]
-....
-public void start(Future<Void> future)
+@DisplayName("Authentication Endpoint Tests")
+@ExtendWith(VertxExtension.class)
+public class AuthenticationEndpointTest {
 ....
 
-If your IDE didn't pick up the import add io.vertx.core.Future to the imports at the top of the class:
+=== Implement the Test Method
 
-[code, java]
+[source,java]
 ....
-import io.vertx.core.Future;
-....
+    WebClient webClient = WebClient.create(vertx);                    <1>
 
-The next thing we will do is to use the Vert.x-Web Router to handle our endpoints.  Delete everything in the existing start method.  Then add the Router:
-
-[code,java]
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();       <2>
+    Checkpoint authenticationCheckpoint = testContext.checkpoint();   <3>
 ....
-    Router router = Router.router(vertx);
-    router.route("/").handler(this::indexHandler);
-....
+<1> Create the WebClient to call our endpoint
+<2> <3> Create the Checkpoints so that the test exits
 
-Again, in case your IDE didn't automatically import the Router for you add the following:
+==== JsonObject
 
-[code,java]
+[source,java]
 ....
-....
+    JsonObject userLogin = new JsonObject()
+      .put("user", new JsonObject()
+          .put("email", "jake@jake.jake")
+          .put("password", "jakejake")
+      );
 
-[code,java]
-....
-
-    // Create the HTTP server and pass the "accept" method to the request handler.
-    vertx
-      .createHttpServer()
-      .requestHandler(router::accept)
-      .listen(8080, result -> {
-        if (result.succeeded()) {
-          future.complete();
-        }else {
-          future.fail(result.cause());
-        }
-      });
+    JsonObject expectedReturn = new JsonObject()
+      .put("user", new JsonObject()
+        .put("email", "jake@jake.jake")
+        .put("password", "jakejake")
+        .put("token", "jwt.token.here")
+        .put("username", "jake")
+        .put("bio", "I work at statefarm")
+        .put("image", ""));
 ....
 
-[code,shell]
+==== Test Method
+[source,java]
 ....
-mvn clean test
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+
+      webClient.post(8080, "localhost", "/")
+        .as(BodyCodec.string())
+        .sendJsonObject(userLogin, resp -> {
+          authenticationCheckpoint.flag();
+          assertEquals(200, resp.result().statusCode());
+          assertEquals(expectedReturn, resp.result().bodyAsJsonObject());
+        });
+    }));
 ....
 
 == Create our Users domain model
 
-[code,java]
+[source,java]
 ....
 package io.vertx.thinkster.conduit.domain;
 
