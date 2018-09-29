@@ -9,6 +9,9 @@ ifdef::env-github[]
 endif::[]
 
 
+
+
+
 == Summary
 
 Now that we have stubbed out the Authentication endpoint it is time to do some real work.  In this step we will create a database for application and use it to authenticate the user json posted to the endpoint.
