@@ -7,11 +7,11 @@ Now that we have stubbed out the Authentication endpoint it is time to do some r
 
 == KeyTerms in this Step
 
-Flyway database migration tool: https://flywaydb.org
-HyperSQL http://hsqldb.org/
+* Flyway database migration tool: https://flywaydb.org
+* HyperSQL http://hsqldb.org/
 
-io.vertx.ext.auth.AuthProvider
-io.vertx.ext.auth.jdbc.JDBCAuth
-io.vertx.ext.jdbc.JDBCClient
+* io.vertx.ext.auth.AuthProvider
+* io.vertx.ext.auth.jdbc.JDBCAuth
+* io.vertx.ext.jdbc.JDBCClient
 
 == Creating the Database
