@@ -1,0 +1,15 @@
+= Flyway
+:source-highlighter: coderay
+
+== About Flyway
+
+== Getting Started 
+
+[source,xml]
+....
+<plugin>
+    <groupId>org.flywaydb</groupId>
+    <artifactId>flyway-maven-plugin</artifactId>
+    <version>5.1.4</version>
+</plugin>
+....
