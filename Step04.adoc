@@ -3,4 +3,15 @@
 
 == Summary
 
+Now that we have stubbed out the Authentication endpoint it is time to do some real work.  In this step we will create a database for application and use it to authenticate the user json posted to the endpoint.
+
 == KeyTerms in this Step
+
+Flyway database migration tool: https://flywaydb.org
+HyperSQL http://hsqldb.org/
+
+io.vertx.ext.auth.AuthProvider
+io.vertx.ext.auth.jdbc.JDBCAuth
+io.vertx.ext.jdbc.JDBCClient
+
+== Creating the Database
