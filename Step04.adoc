@@ -15,3 +15,17 @@ Now that we have stubbed out the Authentication endpoint it is time to do some r
 * io.vertx.ext.jdbc.JDBCClient
 
 == Creating the Database
+
+We will use the Flyway Maven plugin to perform our databse migrations.  Flyway has a command line tool and can be executed from Java, but the Maven plugin is simple to use, keeps us from having to install something on our laptops, and is in keeping with the way we are building and testing in this tutorial.  You can run Flyway commands like so:
+
+[source,shell]
+....
+mvn flyway:migrate
+....
+
+You can find the Flyway properties on line 17 of the pom.xml and the plugin on line 105.
+
+=== Step 1: Create the Migrations
+
+Create a folder src/main/resources/db/migrations.  Create a new file named, "V1__create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration.
+
