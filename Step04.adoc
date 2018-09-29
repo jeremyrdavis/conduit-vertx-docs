@@ -241,3 +241,5 @@ mvn clean test
 ....
 
 It should pass.
+
+== Step 4: Get the User Information from the Database and Return It
