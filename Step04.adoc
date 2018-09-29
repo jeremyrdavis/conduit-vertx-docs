@@ -161,11 +161,7 @@ Initialize the classes inside of MainVerticle's start method before the Router i
 <5>  We instantiate the JDBCAuth AuthProvider with the vertx member variable and the JDBCClient we just created.
 <6>  JDBCAuth expects us to authenticate against the "user" and "password" fields.  Our API, however, uses "email" and "password" so we are overriding the default query with one checks the "EMAIL" column instead of the "USER" column.
 
-[IMPORTANT]
-.Read 6 above
-====
-Read number 6 in the above list
-====
+IMPORTANT: Read 6 above
 
 Delete (or comment out) the stubbed out functionality in the loginHandler method because its time to build the real method.
 
