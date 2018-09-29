@@ -160,3 +160,39 @@ Initialize the classes inside of MainVerticle's start method before the Router i
 <4>  This isn't terribly important in development, but we set the connection pool size anyway.
 <5>  We instantiate the JDBCAuth AuthProvider with the vertx member variable and the JDBCClient we just created.
 <6>  JDBCAuth expects us to authenticate against the "user" and "password" fields.  Our API, however, uses "email" and "password" so we are overriding the default query with one checks the "EMAIL" column instead of the "USER" column.
+
+[IMPORTANT]
+.Read 6 above
+====
+Read number 6 in the above list
+====
+
+Delete (or comment out) the stubbed out functionality in the loginHandler method because its time to build the real method.
+
+The first step is to grab the user from the Json posted to our endpoint.
+
+Json:
+[code,json]
+....
+{
+  "user":{
+    "email": "jake@jake.jake",
+    "password": "jakejake"
+  }
+}
+....
+
+Code that pulls the user from the post:
+[code,java]
+....
+    JsonObject user = context.getBodyAsJson().getJsonObject("user");
+    JsonObject authInfo = new JsonObject()
+      .put("username", user.getString("email"))
+      .put("password", user.getString("password"));
+....
+
+[NOTE]
+.Parsing Json
+====
+There is an easier way to get Json from a request.  We will get to that shortly.
+====
