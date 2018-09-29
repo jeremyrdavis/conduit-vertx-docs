@@ -18,14 +18,105 @@ Now that we have stubbed out the Authentication endpoint it is time to do some r
 
 We will use the Flyway Maven plugin to perform our databse migrations.  Flyway has a command line tool and can be executed from Java, but the Maven plugin is simple to use, keeps us from having to install something on our laptops, and is in keeping with the way we are building and testing in this tutorial.  You can run Flyway commands like so:
 
-[source,shell]
+[code,shell]
 ....
 mvn flyway:migrate
 ....
 
 You can find the Flyway properties on line 17 of the pom.xml and the plugin on line 105.
 
+The properties contain the HyperSQL configuration:
+
+[code,xml]
+....
+    <!-- Flyway Database Migrations -->
+    <flyway.url>jdbc:hsqldb:file:db/spike</flyway.url>     <1>
+    <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>     <2>
+    <flyway.locations>filesystem:src/main/resources/db/migrations</flyway.locations>     <3>
+....
+
+<1> The filesystem location of our HyperSQL database
+<2> The JDBC driver
+<3> The location where we will keep our migration scripts
+
 === Step 1: Create the Migrations
 
-Create a folder src/main/resources/db/migrations.  Create a new file named, "V1__create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration.
+Create a folder src/main/resources/db/migrations.  Create a new file named "V1_\_create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration.
+
+We can craft a "create table" statement using the values in the expected json returned from our endpoint.
+
+The json outlined in the API:
+
+[code,json]
+....
+{
+  "user": {
+    "email": "jake@jake.jake",
+    "token": "jwt.token.here",
+    "username": "jake",
+    "bio": "I work at statefarm",
+    "image": null
+  }
+}
+....
+
+produces the following table that we can use for authentication
+
+[code,sql]
+....
+create table if not exists USER (ID INT IDENTITY PRIMARY KEY ,
+  USERNAME VARCHAR(255) NOT NULL ,
+  EMAIL VARCHAR(255) NOT NULL UNIQUE,
+  BIO VARCHAR(255) ,
+  IMAGE VARCHAR(255) ,
+  PASSWORD VARCHAR(255) NOT NULL ,
+  PASSWORD_SALT VARCHAR(255));
+....
+
+You might have noticed that there is no Json field, "PASSWORD_SALT."  That column is required by Vert.x Authentication functionality.  We will get to that a bit later.
+
+Create a second migration file, V1.1_\_insert-user.sql in the same folder.  The insert contents are:
+
+[code,sql]
+....
+insert into USER (  
+    USERNAME,
+    EMAIL,
+    BIO,
+    IMAGE,
+    PASSWORD,
+    PASSWORD_SALT
+    ) values (
+    'jake',
+    'jake@jake.jake',
+    'I work at state farm',
+    NULL,
+    '39DF2CF3B01EA60EF66DE648CE6CE0B5AD3F99DC2E1816F79186741E9A0444C58B17580D8F9D48C0FB033606A8C515DA7C5B6C792B710ECCB9FEF1429D51E3CE',
+    'BFB49A9B9CDDDF7C488CB2D84E8DDED8EEC01FFDD26B487DC08E5A4CAB6E4D10');
+....
+
+Run the migration:
+
+[code,shell]
+....
+mvn flyway:migrate
+....
+
+You should see something similar to the following:
+
+[code,shell]
+....
+[INFO] --- flyway-maven-plugin:5.1.4:migrate (default-cli) @ vertx-conduit-starter ---
+[INFO] Flyway Community Edition 5.1.4 by Boxfuse
+[INFO] Database: jdbc:hsqldb:file:db/spike (HSQL Database Engine 2.3)
+[INFO] Successfully validated 2 migrations (execution time 00:00.010s)
+[INFO] Creating Schema History table: "PUBLIC"."flyway_schema_history"
+[INFO] Current version of schema "PUBLIC": << Empty Schema >>
+[INFO] Migrating schema "PUBLIC" to version 1 - create-user-table
+[INFO] Migrating schema "PUBLIC" to version 1.1 - insert-user
+[INFO] Successfully applied 2 migrations to schema "PUBLIC" (execution time 00:00.035s)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+....
 
