@@ -8,10 +8,6 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
-
-
-
-
 == Summary
 
 Now that we have stubbed out the Authentication endpoint it is time to do some real work.  In this step we will create a database for application and use it to authenticate the user json posted to the endpoint.
@@ -194,12 +190,54 @@ Code that pulls the user from the post:
 ....
     JsonObject user = context.getBodyAsJson().getJsonObject("user");
     JsonObject authInfo = new JsonObject()
-      .put("username", user.getString("email"))
+      .put("username", user.getString("email"))     <1>
       .put("password", user.getString("password"));
 ....
 
-[NOTE]
-.Parsing Json
-====
-There is an easier way to get Json from a request.  We will get to that shortly.
-====
+<1>  Vert.x' JDBCAuth expects a parameter, "username," but we only have, "email."  Because of this we updated the query to pull from email, and we are passing in the supplied email with the key, "username."  This is just a workaround.
+
+NOTE: There is an easier way to get Json from a request.  We will get to that shortly.
+
+== Step 3: Authenticate Against the Database
+
+[code,java]
+....
+    HttpServerResponse response = context.response();     <1>
+
+    authProvider.authenticate(authInfo, ar -> {     <2>
+      if (ar.succeeded()) {     <3>
+        JsonObject returnValue = new JsonObject()     <4>
+        .put("user", new JsonObject()
+          .put("email", "jake@jake.jake")
+          .put("password", "jakejake")
+          .put("token", "jwt.token.here")
+          .put("username", "jake")
+          .put("bio", "I work at statefarm")
+          .put("image", ""));
+
+        response.setStatusCode(200)
+        .putHeader("Content-Type", "application/json; charset=utf-8")
+        .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+        .end(returnValue.encode());     <5>
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
+....
+
+<1>  Create an HttpServerResponse for obvious reasons
+<2>  This method call, "authProvider.authenticate," does all of the work.  We pass in the authentication info from the request and a lambda to handle success or failure.
+<3>  If the user is authenticated we stub out the response becaue we aren't pulling the entire user from the database yet.
+<4>  Create a JsonObject and stub it out with expected values.
+<5>  JsonObject.encode() encodes the JsonObject as a String.
+
+=== Verify with the MainVerticleTest
+
+[code,shell]
+....
+mvn clean test
+....
+
+It should pass.
