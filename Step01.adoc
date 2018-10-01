@@ -126,6 +126,9 @@ Stop your application with Ctrl + c
 
 The vertx-conduit-starter project comes with a single Verticle, MainVerticle, and a single unit test, MainVerticleTest.  The complete class is annotated below, but open MainVerticleTest in your IDE (or editor) because we broke the test in the previous section, and it needs to be fixed.
 
+=== Vert.x JUnit 5 Integration
+https://vertx.io/preview/docs/vertx-junit5/java/
+
 [code,java]
 ....
 package io.vertx.conduit;
@@ -144,27 +147,27 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 @DisplayName("MainVerticle Test")
-@ExtendWith(VertxExtension.class)
+@ExtendWith(VertxExtension.class)     <8>
 class MainVerticleTest {
 
   @Test
   @DisplayName("Server Started Test")
-  void testServerStart(Vertx vertx, VertxTestContext testContext) {
-    WebClient webClient = WebClient.create(vertx);
+  void testServerStart(Vertx vertx, VertxTestContext testContext) {     <9>
+    WebClient webClient = WebClient.create(vertx);     <10>
 
-    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();     <11>
     Checkpoint requestCheckpoint = testContext.checkpoint();
 
-    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
-      deploymentCheckpoint.flag();
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {     <12>
+      deploymentCheckpoint.flag();     <13>
 
       webClient.get(8080, "localhost", "/")
         .as(BodyCodec.string())
-        .send(testContext.succeeding(resp -> {
-          testContext.verify(() -> {
+        .send(testContext.succeeding(resp -> {     <14>
+          testContext.verify(() -> {     <15>
             assertEquals(200, resp.statusCode());
             assertEquals("Hello, Vert.x!", resp.body());
-            requestCheckpoint.flag();
+            requestCheckpoint.flag();     <16>
           });
         }));
     }));
@@ -172,6 +175,24 @@ class MainVerticleTest {
 
 
 }
-
 ....
+
+<1>  We import and use a Vert.x object because we will spin up and run our Verticles within the unit test.  Vert.x is a toolkit unlike application servers or servlet containers.  We won't deploy anything to Vert.x; we run it directly.
+<2>  Vert.x WebClient makes it easy to do HTTP request/response interactions with a web server.  It also has advanced features for encoding and decoding Json, error handling, form submission, and other web related things.  It is also really useful for testing our endpoints.  You will see a lot of it in this tutorial.
+<3>  BodyCodec encoded and decodes HTTP bodies.
+<4>  Vert.x JUnit 5 Extension provides Checkpoint classes that make testing asynchronous code much easier.  When all of the checkpoints are flagged (see 13 and 16 below) the testContext (see 6) will pass the test.
+<5>  The Vert.x JUnit 5 Extension provides a TestContext
+<6>
+<7>  The next few imports are from "org.junit.jupiter.api."  JUnit 5 is a major rewrite of the test framework.  If you haven't checked it out yet the user guide is a great reference:
+https://junit.org/junit5/docs/current/user-guide/
+Java Magazine also devoted an issue to its' release: http://www.javamagazine.mozaicreader.com/NovDec2016
+<8>  In JUnit 5 ExtendWith replaces RunWith.  We are extending with VertxExtension
+<9>  We pass a Vertx object and a VertxTestContext object to each test method.  These are supplied by the VertxExtension
+<10>  We instantiate the WebCliet to test our endpoint.
+<11>  Here we instantiate 2 checkpoints.  We will use the first to verify that the server started.  The second will signal the end of our test.
+<12>  Two things of note occur on this line.  First, we deploy our Verticle from the test.  This gives us the ability to swap out components because we will eventually have more than one and control configuration from our unit tests.  The second thing to notice is the callback, "testContext.succeeding."  VertxExtension to JUnit provides "failing" and "succeeding" callbacks and the void method "completeNow" that signal the end of the test.  The "succeeding" method takes a callback as its' argument and ends the test based on the result.
+<13>  We flag our first checkpoint because the Verticle is successfully deployed.
+<14>  We send our post data to the endpoint using testContext.succeeding.
+<15>  We use testContext.verify to check the values returned from our endpoint.
+<16>  We flag our second Checkpoint to signal the end of the test.
 
