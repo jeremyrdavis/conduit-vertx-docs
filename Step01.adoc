@@ -92,6 +92,13 @@ mvn clean package
 java -jar ./target/vertx-conduit-1.0-SNAPSHOT-fat.jar
 ....
 
+You should see the following message:
+
+[source,shell]
+....
+INFO: Succeeded in deploying verticle
+....
+
 Open http://localhost:8080.  You should see, "Hello, Vert.x!"
 
 Ctrl + c to stop the server
