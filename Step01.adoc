@@ -24,10 +24,7 @@ git push -u origin master
 ....
 
 === A Few Things About Your pom.xml
-Using the text editor of your choice:
-1. Open up pom.xml
-2. Locate the GAV (line 7)
-3. Locate the properties (11)
+Using the text editor of your choice open the pom.xml file.
 
 [source,xml]
 ....
