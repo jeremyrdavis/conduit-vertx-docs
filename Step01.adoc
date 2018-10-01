@@ -122,3 +122,56 @@ Check your browser again.  You should see, "Hello, Conduit"
 
 Stop your application with Ctrl + c
 
+== MainVerticleTest.java
+
+The vertx-conduit-starter project comes with a single Verticle, MainVerticle, and a single unit test, MainVerticleTest.  The complete class is annotated below, but open MainVerticleTest in your IDE (or editor) because we broke the test in the previous section, and it needs to be fixed.
+
+[code,java]
+....
+package io.vertx.conduit;
+
+import io.vertx.core.Vertx;     <1>
+import io.vertx.ext.web.client.WebClient;     <2>
+import io.vertx.ext.web.codec.BodyCodec;     <3>
+import io.vertx.junit5.Checkpoint;     <4>
+import io.vertx.junit5.VertxExtension;     <5>
+import io.vertx.junit5.VertxTestContext;     <6>
+import org.junit.jupiter.api.DisplayName;     <7>
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+
+@DisplayName("MainVerticle Test")
+@ExtendWith(VertxExtension.class)
+class MainVerticleTest {
+
+  @Test
+  @DisplayName("Server Started Test")
+  void testServerStart(Vertx vertx, VertxTestContext testContext) {
+    WebClient webClient = WebClient.create(vertx);
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint requestCheckpoint = testContext.checkpoint();
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+
+      webClient.get(8080, "localhost", "/")
+        .as(BodyCodec.string())
+        .send(testContext.succeeding(resp -> {
+          testContext.verify(() -> {
+            assertEquals(200, resp.statusCode());
+            assertEquals("Hello, Vert.x!", resp.body());
+            requestCheckpoint.flag();
+          });
+        }));
+    }));
+  }
+
+
+}
+
+....
+

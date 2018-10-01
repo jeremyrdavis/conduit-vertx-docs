@@ -233,6 +233,47 @@ NOTE: There is an easier way to get Json from a request.  We will get to that sh
 <4>  Create a JsonObject and stub it out with expected values.
 <5>  JsonObject.encode() encodes the JsonObject as a String.
 
+The complete method is below so that you can check against it:
+
+[code,java]
+....
+  private void loginHandler(RoutingContext context) {
+    JsonObject user = context.getBodyAsJson().getJsonObject("user");
+    user.put("username", "placeholder");
+
+    JsonObject authInfo = new JsonObject()
+      .put("username", user.getString("email"))
+      .put("password", user.getString("password"));
+    System.out.println(user);
+
+    HttpServerResponse response = context.response();
+
+    authProvider.authenticate(authInfo, ar -> {
+      if (ar.succeeded()) {
+
+        JsonObject returnValue = new JsonObject()
+          .put("user", new JsonObject()
+            .put("email", "jake@jake.jake")
+            .put("password", "jakejake")
+            .put("token", "jwt.token.here")
+            .put("username", "jake")
+            .put("bio", "I work at statefarm")
+            .put("image", ""));
+        System.out.println(returnValue);
+
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "application/json; charset=utf-8")
+          .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+          .end(returnValue.encode());
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
+  }
+....
+
 === Verify with the MainVerticleTest
 
 [code,shell]
@@ -243,3 +284,23 @@ mvn clean test
 It should pass.
 
 == Step 4: Get the User Information from the Database and Return It
+
+Remove the stubbed out JsonObject that we are returning so that the method is empty:
+
+[code,java]
+....
+    authProvider.authenticate(authInfo, ar -> {
+      if (ar.succeeded()) {
+
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "application/json; charset=utf-8")
+          .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+          .end(returnValue.encode());
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
+
+....
