@@ -5,7 +5,9 @@ import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.jdbc.JDBCAuth;
+import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -15,6 +17,8 @@ public class MainVerticle extends AbstractVerticle {
   private JDBCAuth authProvider;
 
   private JDBCClient jdbcClient;
+
+  private JWTAuth jwtAuth;
 
   @Override
   public void start(Future<Void> future) {
@@ -27,6 +31,13 @@ public class MainVerticle extends AbstractVerticle {
 
     authProvider = JDBCAuth.create(vertx, jdbcClient);
     authProvider.setAuthenticationQuery("SELECT PASSWORD, PASSWORD_SALT FROM USER WHERE EMAIL = ?");
+
+    // instantiate our JWT Auth Provider
+    jwtAuth = JWTAuth.create(vertx, new JsonObject()
+      .put("keyStore", new JsonObject()
+        .put("type", "jceks")
+        .put("path", "keystore.jceks")
+        .put("password", "secret")));
 
     Router baseRouter = Router.router(vertx);
     baseRouter.route("/").handler(this::indexHandler);
@@ -63,11 +74,14 @@ public class MainVerticle extends AbstractVerticle {
     authProvider.authenticate(authInfo, ar -> {
       if (ar.succeeded()) {
 
+        // generate our JWT token
+        String token = jwtAuth.generateToken(new JsonObject(), new JWTOptions().setIgnoreExpiration(true));
+
         JsonObject returnValue = new JsonObject()
           .put("user", new JsonObject()
             .put("email", "jake@jake.jake")
             .put("password", "jakejake")
-            .put("token", "jwt.token.here")
+            .put("token", token)
             .put("username", "jake")
             .put("bio", "I work at statefarm")
             .put("image", ""));
