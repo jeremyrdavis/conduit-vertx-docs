@@ -1,9 +1,24 @@
 = Step 03 : Our first Endpoint
 :source-highlighter: coderay
 
-== KeyTerms
+== Summary
+
+The first endpoint that we implement will be the Authentication endpoint (see next section.)  There are 2 reasons for this:
+1. Since most of the endpoints require authentication it is a reasonable place to start
+2. The 3 tutorials at Thinkster.io all start with the Authentication endpoint, and we are doing our best to follow along
+
+Our first step will be to create a test (of course) and stub out the respone.
+Our second step will be to add a databse 
+step will be to create a test that attempts to authenticate using the example user, "jake@jake.jake"
+We will then build the code to pass the test
+* create a REST endpoint that accepts JSON in the expected format
+* stub out the authentication and simply check hard coded values
+* return the expected JSON User representation
+
+== KeyTerms in this Step
 
 JsonObject
+
 
 == Authentication (Login) Endpoint
 The first endpoint we will implement is the Authentication endpoint, documented here:
@@ -35,13 +50,7 @@ Expected Return:
   }
 }
 ....
-== Approach
 
-Our first step will be to create a test that attempts to authenticate using the example user, "jake@jake.jake"
-We will then build the code to pass the test
-* create a REST endpoint that accepts JSON in the expected format
-* stub out the authentication and simply check hard coded values
-* return the expected JSON User representation
 
 == Test First!
 

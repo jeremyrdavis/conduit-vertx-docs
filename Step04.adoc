@@ -285,12 +285,14 @@ It should pass.
 
 == Step 4: Get the User Information from the Database and Return It
 
-Remove the stubbed out JsonObject that we are returning so that the method is empty:
+Remove the stubbed out "put" methods of our JsonObject "returnValue" so that we have room to work:
 
 [code,java]
 ....
     authProvider.authenticate(authInfo, ar -> {
       if (ar.succeeded()) {
+
+        JsonObject returnValue = new JsonObject();
 
         response.setStatusCode(200)
           .putHeader("Content-Type", "application/json; charset=utf-8")
@@ -302,5 +304,14 @@ Remove the stubbed out JsonObject that we are returning so that the method is em
           .end("Authentication Failed: " + ar.cause());
       }
     });
-
 ....
+
+It's probably not a bad idea to run our tests again as a sanity check to make sure the tests are executing correctly.
+
+[code,shell]
+....
+mvn clean test
+....
+
+Should produce failing tests.
+
