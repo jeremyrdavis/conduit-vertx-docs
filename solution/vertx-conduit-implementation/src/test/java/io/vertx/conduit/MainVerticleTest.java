@@ -33,7 +33,7 @@ class MainVerticleTest {
         .send(testContext.succeeding(resp -> {
           testContext.verify(() -> {
             assertEquals(200, resp.statusCode());
-            assertEquals("Hello, Vert.x!", resp.body());
+            assertEquals("Hello, CodeOne!", resp.body());
             requestCheckpoint.flag();
           });
         }));
