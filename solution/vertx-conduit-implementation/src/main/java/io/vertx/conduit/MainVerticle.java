@@ -4,14 +4,29 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.jdbc.JDBCAuth;
+import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 
 public class MainVerticle extends AbstractVerticle {
 
+  private JDBCAuth authProvider;
+
+  private JDBCClient jdbcClient;
+
   @Override
   public void start(Future<Void> future) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put("url", "jdbc:hsqldb:file:db/conduit;shutdown=true")
+      .put("driver_class", "org.hsqldb.jdbcDriver")
+      .put("user", "sa")
+      .put("max_pool_size", 30));
+
+    authProvider = JDBCAuth.create(vertx, jdbcClient);
+    authProvider.setAuthenticationQuery("SELECT PASSWORD, PASSWORD_SALT FROM USER WHERE EMAIL = ?");
 
     Router baseRouter = Router.router(vertx);
     baseRouter.route("/").handler(this::indexHandler);
@@ -38,33 +53,38 @@ public class MainVerticle extends AbstractVerticle {
   private void loginHandler(RoutingContext context) {
     System.out.println(context.getBodyAsJson());
     JsonObject user = context.getBodyAsJson().getJsonObject("user");
-    if(
-      user.getString("email").equalsIgnoreCase("jake@jake.jake") &&
-        user.getString("password").equalsIgnoreCase("jakejake")){
 
-      JsonObject returnValue = new JsonObject()
-        .put("user", new JsonObject()
-          .put("email", "jake@jake.jake")
-          .put("password", "jakejake")
-          .put("token", "jwt.token.here")
-          .put("username", "jake")
-          .put("bio", "I work at statefarm")
-          .put("image", ""));
-      System.out.println(returnValue);
+    JsonObject authInfo = new JsonObject()
+      .put("username", user.getString("email"))
+      .put("password", user.getString("password"));
 
-      HttpServerResponse response = context.response();
-      response.setStatusCode(200)
-        .putHeader("Content-Type", "application/json; charset=utf-8")
-        .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
-        .end(returnValue.toString());
+    HttpServerResponse response = context.response();
 
-    }else{
-      context.response()
-        .setStatusCode(401)
-        .putHeader("Content-Type", "text/html")
-        .end("Go away");
-    }
+    authProvider.authenticate(authInfo, ar -> {
+      if (ar.succeeded()) {
+
+        JsonObject returnValue = new JsonObject()
+          .put("user", new JsonObject()
+            .put("email", "jake@jake.jake")
+            .put("password", "jakejake")
+            .put("token", "jwt.token.here")
+            .put("username", "jake")
+            .put("bio", "I work at statefarm")
+            .put("image", ""));
+        System.out.println(returnValue);
+
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "application/json; charset=utf-8")
+          .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+          .end(returnValue.encode());
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
   }
+
   private void indexHandler(RoutingContext routingContext) {
     HttpServerResponse response = routingContext.response();
     response
