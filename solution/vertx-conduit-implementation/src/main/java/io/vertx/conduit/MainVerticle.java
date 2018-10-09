@@ -11,6 +11,7 @@ import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.JWTAuthHandler;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -42,13 +43,15 @@ public class MainVerticle extends AbstractVerticle {
         .put("path", "keystore.jceks")
         .put("password", "secret")));
 
+    JWTAuthHandler jwtAuthHandler = JWTAuthHandler.create(jwtAuth);
+
     Router baseRouter = Router.router(vertx);
     baseRouter.route("/").handler(this::indexHandler);
 
     Router apiRouter = Router.router(vertx);
     apiRouter.route("/*").handler(BodyHandler.create());
     apiRouter.post("/users/login").handler(this::loginHandler);
-    apiRouter.get("/user").handler(this::getUserHandler);
+    apiRouter.get("/user").handler(jwtAuthHandler).handler(this::getUserHandler);
 
     baseRouter.mountSubRouter("/api", apiRouter);
 
