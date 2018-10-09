@@ -14,6 +14,9 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 public class MainVerticle extends AbstractVerticle {
 
+  public static final String HEADER_CONTENT_TYPE = "Content-Type";
+  public static final String CONTENT_TYPE_JSON = "application/json; charset=utf-8";
+
   private JDBCAuth authProvider;
 
   private JDBCClient jdbcClient;
@@ -45,6 +48,7 @@ public class MainVerticle extends AbstractVerticle {
     Router apiRouter = Router.router(vertx);
     apiRouter.route("/*").handler(BodyHandler.create());
     apiRouter.post("/users/login").handler(this::loginHandler);
+    apiRouter.get("/user").handler(this::getUserHandler);
 
     baseRouter.mountSubRouter("/api", apiRouter);
 
@@ -58,6 +62,22 @@ public class MainVerticle extends AbstractVerticle {
         future.fail(result.cause());
       }
     });
+
+  }
+
+  private void getUserHandler(RoutingContext context) {
+    JsonObject returnValue = new JsonObject()
+      .put("user", new JsonObject()
+        .put("email", "jake@jake.jake")
+        .put("password", "jakejake")
+        .put("token", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MzkxMTMxNzJ9.EpFIxvzgsIhZmrEPQYhX9lzZgmpBiI1rgY9xl1YXOlc")
+        .put("username", "jake")
+        .put("bio", "I work at statefarm")
+        .put("image", ""));
+    context.response()
+      .setStatusCode(200)
+      .putHeader(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
+      .end(returnValue.encodePrettily());
 
   }
 
