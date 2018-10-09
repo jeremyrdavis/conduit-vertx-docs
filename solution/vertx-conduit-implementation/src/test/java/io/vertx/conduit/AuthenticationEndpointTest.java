@@ -32,7 +32,7 @@ public class AuthenticationEndpointTest {
         assertEquals(200, response.result().statusCode());
         assertEquals("jake@jake.jake", user.getString("email"));
         assertEquals("jakejake", user.getString("password"));
-        assertNotNull( user.getString("TOKEN"));
+        assertNotNull( user.getString("token"));
         assertEquals("jake", user.getString("username"));
         assertEquals("I work at statefarm", user.getString("bio"));
         assertEquals("", user.getString("image"));

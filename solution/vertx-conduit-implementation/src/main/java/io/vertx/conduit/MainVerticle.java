@@ -98,7 +98,7 @@ public class MainVerticle extends AbstractVerticle {
       if (ar.succeeded()) {
 
         // generate our JWT token
-        String token = jwtAuth.generateToken(new JsonObject(), new JWTOptions().setIgnoreExpiration(true));
+        String token = jwtAuth.generateToken(authInfo, new JWTOptions().setIgnoreExpiration(true));
 
         JsonObject returnValue = new JsonObject()
           .put("user", new JsonObject()
