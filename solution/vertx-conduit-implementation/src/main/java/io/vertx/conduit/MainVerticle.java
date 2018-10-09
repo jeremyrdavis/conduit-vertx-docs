@@ -103,7 +103,7 @@ public class MainVerticle extends AbstractVerticle {
     HttpServerResponse response = routingContext.response();
     response
       .putHeader("Content-Type", "text/html")
-      .end("Hello CodeOne!");
+      .end("Hello, CodeOne!");
   }
 
 }

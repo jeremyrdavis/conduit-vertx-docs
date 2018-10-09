@@ -6,11 +6,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("Authentication Endpoint Tests")
 @ExtendWith(VertxExtension.class)
@@ -30,7 +32,7 @@ public class AuthenticationEndpointTest {
         assertEquals(200, response.result().statusCode());
         assertEquals("jake@jake.jake", user.getString("email"));
         assertEquals("jakejake", user.getString("password"));
-        assertEquals("jwt.token.here", user.getString("token"));
+        assertNotNull( user.getString("token"));
         assertEquals("jake", user.getString("username"));
         assertEquals("I work at statefarm", user.getString("bio"));
         assertEquals("", user.getString("image"));
