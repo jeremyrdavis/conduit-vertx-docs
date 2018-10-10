@@ -29,7 +29,8 @@ public class AuthenticationEndpointTest {
           .put("password", "jakejake")
         ), response -> testContext.verify(() -> {
         JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");
-        assertEquals(200, response.result().statusCode());
+          System.out.println(user.encodePrettily());
+          assertEquals(200, response.result().statusCode());
         assertEquals("jake@jake.jake", user.getString("email"));
         assertEquals("jakejake", user.getString("password"));
         assertNotNull( user.getString("token"));

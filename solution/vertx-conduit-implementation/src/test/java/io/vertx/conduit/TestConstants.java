@@ -1,0 +1,9 @@
+package io.vertx.conduit;
+
+public class TestConstants {
+
+  public static final String TOKEN_JAKE = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTExODYyM30.XnILp6FdRdbSsxdWKsJoF_kcdVE3nWPS6w93zJgiMyY";
+
+  public static final String TOKEN_INVALID = "Bearer eyJg3XAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTExODYyM30.XnILp6FdRdbSsxdWKsJoF_kcdVE3nWPS6w93zJgiMyY";
+
+}

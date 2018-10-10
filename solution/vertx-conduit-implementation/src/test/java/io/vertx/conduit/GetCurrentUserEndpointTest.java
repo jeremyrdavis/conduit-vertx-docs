@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import static io.vertx.conduit.MainVerticle.CONTENT_TYPE_JSON;
 import static io.vertx.conduit.MainVerticle.HEADER_CONTENT_TYPE;
+import static io.vertx.conduit.TestConstants.TOKEN_INVALID;
+import static io.vertx.conduit.TestConstants.TOKEN_JAKE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,9 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(VertxExtension.class)
 public class GetCurrentUserEndpointTest {
 
-  static final String TOKEN = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTExODYyM30.XnILp6FdRdbSsxdWKsJoF_kcdVE3nWPS6w93zJgiMyY";
-
-  static final String TOKEN_INVALID = "Bearer eyJg3XAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTExODYyM30.XnILp6FdRdbSsxdWKsJoF_kcdVE3nWPS6w93zJgiMyY";
   /**
    * This method tests the endpoint
    * GET /api/user
@@ -55,7 +54,7 @@ public class GetCurrentUserEndpointTest {
       WebClient webClient = WebClient.create(vertx);
 
       webClient.get(8080, "localhost", "/api/user")
-        .putHeader("Authorization", TOKEN)
+        .putHeader("Authorization", TOKEN_JAKE)
         .as(BodyCodec.jsonObject())
         .send(testContext.succeeding(response -> {
           testContext.verify(()->{
