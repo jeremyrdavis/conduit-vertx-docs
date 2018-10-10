@@ -1,19 +1,18 @@
 = Conduit Vert.x
 
-== Tasks
+=== Topics
 
-=== Creating an API
+Asynchronous and Reactive development
+Thinkster.io and Conduit
+Vertx-Web
+Message Bus
+Building a REST API
+Authentication with JWT
+Database access and Mongo
 
-=== Creating the Domain Model
-==== Errors
-==== User
-Actual Profile
-Public Profile
-==== Registration
-==== Login
-==== Article
-==== Comments
-==== Tags
+=== Clone a seed repo
 
-=== Authentication
-=== Implementing the API
+=== Create an HTTP Server
+Create a basic "Hello, World" message, package and run it
+
+=== Implement the Login Endpoint

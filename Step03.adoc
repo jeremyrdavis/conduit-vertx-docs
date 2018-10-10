@@ -1,4 +1,4 @@
-= Step 03 : Our first Endpoint
+= Step 03 : Implement Our First Endpoint
 :source-highlighter: coderay
 
 == Summary
