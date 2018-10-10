@@ -198,4 +198,5 @@ public class TestConstants {
 
 ....
 
-<1> Add "Bearer " to the token you copied to form the String.  We will get to why shortly.
+<1> Add "Bearer " to the token you copied to form the String.  We will get to why in the next step.
+
