@@ -122,7 +122,7 @@ Your test will still fail.  Change the test so that it no longer checks for "jwt
 [code,java]
 ....
 
-        assertNotNull( user.getString("token"));
+  assertNotNull(user.getString("token"));
 
 ....
 
