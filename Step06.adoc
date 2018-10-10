@@ -1,3 +1,43 @@
+= Step 06 : Authentication with JWT
+:source-highlighter: coderay
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+== Summary
+
+Now that we are authenticating users against the database and createing JWT tokens we can lock down our endpoints.  The first protected endpoint we will implement is  "GET /api/user" which requires JWT authentication and returns the authenticated user, in our case "jake":
+
+[code,json]
+....
+
+    {
+        "user": {
+        "email": "jake@jake.jake",
+        "token": "jwt.token.here",
+        "username": "jake",
+        "bio": "I work at statefarm",
+        "image": null
+        }
+    }
+
+....
+
+== KeyTerms in this Step
+
+JWT
+
+== Failure Time!
+
+Create a new class JWTAuthenticationTest in our test package, with a single test method, "GetCurrentUserEndpointTest" :
+
+[code,java]
+....
+
 package io.vertx.conduit;
 
 import io.vertx.core.Vertx;
@@ -17,16 +57,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class AuthenticationEndpointTest {
 
   @Test
-  public void testAuthentication(Vertx vertx, VertxTestContext testContext){
+  public void testSuccessfulAuthentication(Vertx vertx, VertxTestContext testContext){
     vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
       WebClient webClient = WebClient.create(vertx);
       webClient.post(8080, "localhost", "/api/users/login")
-        .sendJsonObject(new JsonObject()
-        .put("user", new JsonObject()
+        .sendJsonObject(new JsonObject()          <1>
+        .put("user", new JsonObject()     
           .put("email", "jake@jake.jake")
           .put("password", "jakejake")
-        ), response -> testContext.verify(() -> {
-        JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");
+        ), response -> testContext.verify(() -> {          <2>
+        JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");          <3>
           System.out.println(user.encodePrettily());
           assertEquals(200, response.result().statusCode());
         assertEquals("jake@jake.jake", user.getString("email"));
@@ -40,3 +80,6 @@ public class AuthenticationEndpointTest {
     }));
   }
 }
+
+
+....

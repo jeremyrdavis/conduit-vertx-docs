@@ -4,6 +4,6 @@ We will start by cloning a starter project that contains all of the basics to bu
 == Step 02 : REST Basics with Vert.x Web
 == Step 03 : Implement Our First Endpoint
 == Step 04 : Add a Database
-== Step 05 : Generate JWT Tokens
-== Step 06 : Protect an Endpoint with JWT
+== Step 05 : Add JWT Support
+== Step 06 : Authentication with JWT
 

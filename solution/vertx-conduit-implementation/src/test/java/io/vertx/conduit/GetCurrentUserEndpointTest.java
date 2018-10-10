@@ -3,7 +3,6 @@ package io.vertx.conduit;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.codec.BodyCodec;
 import io.vertx.junit5.Checkpoint;
@@ -19,7 +18,6 @@ import static io.vertx.conduit.TestConstants.TOKEN_INVALID;
 import static io.vertx.conduit.TestConstants.TOKEN_JAKE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("Get Current User Endpoint Tests")
 @ExtendWith(VertxExtension.class)

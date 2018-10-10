@@ -81,7 +81,6 @@ public class MainVerticle extends AbstractVerticle {
       .setStatusCode(200)
       .putHeader(HEADER_CONTENT_TYPE, CONTENT_TYPE_JSON)
       .end(returnValue.encodePrettily());
-
   }
 
   private void loginHandler(RoutingContext context) {
