@@ -1,13 +1,15 @@
 = Step 03 : Implement Our First Endpoint
 :source-highlighter: coderay
 
+== Key Terms in This Step
+
 == Summary
 
-The first endpoint that we will implement will be the Registration endpoint
+The Conduit API can be found on Thinkster's Github : https://github.com/gothinkster/realworld/blob/master/api/README.md
 
-POST /api/users
+The first endpoint that we will implement will be the Registration endpoint 
 
-Request body:
+The Registration endpoint expects a Post request at "/api/users" with the following body:
 
 [code,json]
 ....
@@ -22,7 +24,7 @@ Request body:
 
 ....
 
-Expected response:
+Our test expects the following response:
 
 [code,json]
 ....

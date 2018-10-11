@@ -1,5 +1,5 @@
 = Step 1 : Getting Started
-:source-highlighter: coderay
+:source-highlighter: prettify
 ifdef::env-github[]
 :tip-caption: :bulb:
 :note-caption: :information_source:

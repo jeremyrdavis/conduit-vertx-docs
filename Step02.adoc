@@ -1,5 +1,12 @@
 = Step 02 : REST Basics with Vert.x-Web
 :source-highlighter: prettify
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 == Key Terms in This Step
 * Future<Void>
@@ -8,7 +15,7 @@
 
 == Vert.x Core
 
-Vert.x' core functionality contains an HTTP server.  The example app you cloned spins one up on port 8080 and returns a simple "Hello, Vert.x" (code below.)
+Vert.x' core functionality contains an HTTP server.  The example app you cloned spins one up on port 8080 and returns a simple "Hello, Vert.x" which we changed to "Hello, Conduit!"
 
 [source,java]
 ....
