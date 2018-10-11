@@ -1,14 +1,22 @@
 = Step 1 : Getting Started
 :source-highlighter: coderay
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 == Key Terms in This Step
-pom.xml
-Fat jar (or Uber jar)
-Verticle
-JUnit
-Vertx JUnit 5 Extension
-Checkpoint
-Vertx WebClient
+
+* pom.xml
+* Fat jar (or Uber jar)
+* Verticle
+* JUnit
+* Vertx JUnit 5 Extension
+* Checkpoint
+* Vertx WebClient
 
 == Clone the Vert.x Starter Project
 
