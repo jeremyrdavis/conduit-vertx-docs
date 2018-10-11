@@ -1,7 +1,19 @@
 = Step 03 : Implement Our First Endpoint
-:source-highlighter: coderay
+:source-highlighter: prettify
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
-== Key Terms in This Step
+== KeyTerms in this Step
+
+BodyHandler
+JsonObject
+WebClient
+Flyway
 
 == Summary
 
@@ -24,7 +36,7 @@ The Registration endpoint expects a Post request at "/api/users" with the follow
 
 ....
 
-Our test expects the following response:
+Our API defines the following response:
 
 [code,json]
 ....
@@ -53,145 +65,248 @@ The 3 tutorials at Thinkster.io all start with the Authentication endpoint.  We 
 
 Red, Green, Refactor...
 
-Our first step will be to create a test (of course) and stub out the respone.
+Our first step will be to create a test (of course) and stub out the respone
+
 We will then build the code to pass the test
+
 * create our database using Flyway
 * create a REST endpoint that accepts JSON in the expected format
 * marshall the JSON into a domain object
 * persist the User posted to our endpoint
 * return the expected JSON User representation
 
-== KeyTerms in this Step
-
-Verticle
-JsonObject
-WebClient
-VertxUnitRunner
-Flyway
-
-== Authentication (Login) Endpoint
-The first endpoint we will implement is the Authentication endpoint, documented here:
-https://github.com/gothinkster/realworld/blob/master/api/README.md
-
-POST /api/users/login
-
-Input:
-[code,json]
-....
-{
-  "user":{
-    "email": "jake@jake.jake",
-    "password": "jakejake"
-  }
-}
-....
-
-Expected Return:
-[code,json]
-....
-{
-  "user": {
-    "email": "jake@jake.jake",
-    "token": "jwt.token.here",
-    "username": "jake",
-    "bio": "I work at statefarm",
-    "image": null
-  }
-}
-....
-
 
 == Test First!
 
-Create a new class, AuthenticationEndpointTest, in the io.vertx.conduit package.  Annotate the class with:
+Create a new class, RegistrationEndpointTest, in the io.vertx.conduit package
 
 [source,java]
 ....
-import io.vertx.junit5.VertxExtension;
+
+package io.vertx.conduit;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;          <1>
+import io.vertx.junit5.VertxExtension;          <2>
+import io.vertx.junit5.VertxTestContext;          <3>
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;          <4>
+
 @DisplayName("Authentication Endpoint Tests")
-@ExtendWith(VertxExtension.class)
-public class AuthenticationEndpointTest {
-....
+@ExtendWith(VertxExtension.class)          <5>
+public class RegistrationEndpointTest {
 
-=== Implement the Test Method
-
-[source,java]
-....
-    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {              <1>             
-      WebClient webClient = WebClient.create(vertx);                                     <2>
-      webClient.post(8080, "localhost", "/api/users/login")                              <3>
-        .sendJsonObject(new JsonObject()                                                 <4>
+  @Test
+  public void testRegisteringNewUser(Vertx vertx, VertxTestContext testContext){
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      WebClient webClient = WebClient.create(vertx);          <6>
+      webClient.post(8080, "localhost", "/api/users")          <7>
+        .sendJsonObject(new JsonObject()          <8>
           .put("user", new JsonObject()
+            .put("username", "Jacob")
             .put("email", "jake@jake.jake")
             .put("password", "jakejake")
-          ), response -> testContext.verify(() -> {                                      <5>
-          JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");  <6>
-          assertEquals(200, response.result().statusCode());                             <7>
-          assertEquals("jake@jake.jake", user.getString("email"));                       <8>
+          ), response -> testContext.verify(() -> {
+          assertEquals(200, response.result().statusCode());          <9>
+          JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");          <10>
+          assertEquals("jake@jake.jake", user.getString("email"));          <11>
           assertEquals("jakejake", user.getString("password"));
-          assertEquals("jwt.token.here", user.getString("token"));
-          assertEquals("jake", user.getString("username"));
-          assertEquals("I work at statefarm", user.getString("bio"));
-          assertEquals("", user.getString("image"));
-          testContext.completeNow();                                                     <9>
+          assertEquals("Jacob", user.getString("username"));
+          testContext.completeNow();          <12>
         }));
     }));
+  }
+
+}
+
 ....
 
-<1> Deploy our MainVerticle
-<2> Create a WebClient to call the endpoint
-<3> Use the WebClient to post Json to the URI
-<4> We can create a new JsonObject as an inline argument to the .sendJsonObject method
-<5> This lambda performs the actual work of the test
-<6> Unmarshall the response
-<7> Verify the status code of our response
-<8> The next lines verify the resulting Json
-<9> Finish the test by calling completeNow()
 
-== Stub out the Response
+<1>  Your or your IDE needs to import "io.vertx.ext.web.client.WebClient"
+<2>  Your or your IDE needs to import "import io.vertx.junit5.VertxExtension"
+<3>  Your or your IDE needs to import "import io.vertx.junit5.VertxTestContext"
+<4>  JUnit 5 is a major change from previous versions.  All assertions are now in the Jupiter API module
+<5>  We extend JUnit's basic functionality with the VertxExtension
+<6>  Create a WebClient to call our URI
+<7>  Make a post call to "/api/users"
+<8>  Define the Json we are sending in the POST request
+<9>  Verify the Response' status code
+<10> Get the Json from the Response and store it in a local variable, "user"
+<11> Verify only the parameters that posted
+<12> End the test.  It is important to make sure we wrap up our tests because you can easily find yourself wondering why your Unit Test is hanging or why your Unit Test ended so quickly
+
+=== Run the Test
+
+[code,shell]
+....
+
+mvn clean test
+
+....
+
+The test shouldn't pass at this point, but it is important to regularly run your test cases
+
+[code,shell]
+....
+
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s - in io.vertx.conduit.MainVerticleTest
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Errors:
+[ERROR]   RegistrationEndpointTest.lambda$null$1:29->lambda$null$0:31 » Decode Failed to...
+[INFO]
+[ERROR] Tests run: 2, Failures: 0, Errors: 1, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 4.657 s
+[INFO] Finished at: 2018-10-11T14:59:22-04:00
+[INFO] Final Memory: 22M/309M
+[INFO] ------------------------------------------------------------------------
+
+....
+
+The test fails of course because we aren't serving anything at "/api/users" 
+
+=== Pass the Test
+
+==== Register the Endpoint
+
+First things first we need to register, "/api/users" with our router.  We're going to do that by creating a new Router to handle all requests that begin with "/api"
 
 [source,java]
 ....
-  private void loginHandler(RoutingContext context) {
-    JsonObject user = context.getBodyAsJson().getJsonObject("user");     <1>
-    if(
-      user.getString("email").equalsIgnoreCase("jake@jake.jake") &&
-      user.getString("password").equalsIgnoreCase("jakejake")){         <2>
 
-      JsonObject returnValue = new JsonObject()     <3>
-        .put("user", new JsonObject()
-          .put("email", "jake@jake.jake")
-          .put("password", "jakejake")
-          .put("token", "jwt.token.here")
-          .put("username", "jake")
-          .put("bio", "I work at statefarm")
-          .put("image", ""));
-      System.out.println(returnValue);
+package io.vertx.conduit;
 
-      HttpServerResponse response = context.response();
-      response.setStatusCode(200)     <4>
-        .putHeader("Content-Type", "application/json; charset=utf-8")     <5>
-        .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))     <6>
-        .end(returnValue.toString());     <7>
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 
-    }else{
-      context.response()
-        .setStatusCode(401)
-        .putHeader("Content-Type", "text/html")
-        .end("Go away");
-    }
+public class MainVerticle extends AbstractVerticle {
+
+  @Override
+  public void start(Future<Void> startFuture) {
+
+    Router baseRouter = Router.router(vertx);
+    baseRouter.route("/").handler(this::indexHandler);
+
+    Router apiRouter = Router.router(vertx);          <1>
+    apiRouter.route("/*").handler(BodyHandler.create());          <2>
+    apiRouter.post("/users/login").handler(this::registrationHandler);          <3>
+
+    baseRouter.mountSubRouter("/api", apiRouter);          <4>
+
+    vertx.createHttpServer()
+        .requestHandler(req -> req.response().end("Hello, Conduit!"))
+        .listen(8080);
+    startFuture.complete();
   }
+
+  private void indexHandler(RoutingContext routingContext) {
+    HttpServerResponse response = routingContext.response();
+    response
+      .putHeader("Content-Type", "text/html")
+      .end("Hello Conduit!");
+  }
+
+}
+
 ....
-<1> Unmarshall the Json from the request into a JsonObject
-<2> Check the values for "user" and "password"
-<3> Create the Json for our response
-<4>
-<5>
-<6>
-<7>
+
+<1>  Create a new Router named, "apiRouter"
+<2>  Create a BodyHandler for all of the endpoints.  Vert.x' BodyHandler enables us to manipulate request data
+<3>  Register our endpoint, "/api/users"
+<4>  Attach our apiRouter to the previously defined baseRouter
+
+Your IDE is probably complaining at the moment because there isn't a "registrationHandler" method.  Let's fix that.
+
+==== Attach a Handler to the Endpoint
+
+We are going to quickly stub out a response to get a feel for what we are building.
+
+[source,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+
+public class MainVerticle extends AbstractVerticle {
+
+  @Override
+  public void start(Future<Void> startFuture) {
+
+    Router baseRouter = Router.router(vertx);
+    baseRouter.route("/").handler(this::indexHandler);
+
+    Router apiRouter = Router.router(vertx);
+    apiRouter.route("/*").handler(BodyHandler.create());
+    apiRouter.post("/users").handler(this::registrationHandler);
+
+    baseRouter.mountSubRouter("/api", apiRouter);
+
+    vertx
+      .createHttpServer()
+      .requestHandler(baseRouter::accept)
+      .listen(8080, result -> {
+        if (result.succeeded()) {
+          startFuture.complete();
+        }else {
+          startFuture.fail(result.cause());
+        }
+      });
+  }
+
+  private void registrationHandler(RoutingContext routingContext) {
+
+    JsonObject user = routingContext.getBodyAsJson().getJsonObject("user");          <1>
+
+    JsonObject returnValue = new JsonObject()          <2>
+      .put("user", new JsonObject()
+        .put("email", user.getString("email"))
+        .put("password", user.getString("password"))
+        .put("token", "")
+        .put("username", user.getString("username"))
+        .put("bio", "")
+        .put("image", ""));
+    routingContext.response()
+      .setStatusCode(201)          <3>
+      .putHeader("Content-Type", "application/json; charset=utf-8")          <4>
+      .end(returnValue.encodePrettily());          <5>
+  }
+
+  private void indexHandler(RoutingContext routingContext) {
+    HttpServerResponse response = routingContext.response();
+    response
+      .putHeader("Content-Type", "text/html")
+      .end("Hello Conduit!");
+  }
+
+}
+
+....
+
+<1>  Unmarshall the Json from the request into a JsonObject
+<2>  Create the Json for our response
+<3>  Set the status code to "201" which is "Created"
+<4>  Set the content type 
+<6>  Return the Json
 
 == Lookuping the User
 
