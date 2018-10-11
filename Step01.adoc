@@ -43,6 +43,14 @@ git push -u origin master
 === A Few Things About Your pom.xml
 Using the text editor of your choice open the pom.xml file.
 
+A few things to note:
+<1>  The "main.verticle" property is used by the maven-shade-plugin and the maven-exec-plugin to determine which Verticle runs when the application starts  (see <3> and <5> below)
+<2>  All of the necessary dependencies for this application are already in your pom.xml.  This is to prevent the hassle of fat-finger and copy/paste errors.  One of the things you will notice is the number of "vertx-" dependencies.  Vert.x is a modular toolkit, and you import various tools as you need them.  During this tutorial we will refer back to the pom.xml to illustrate this concept
+<3>  The maven-shade-plugin builds our fat jar
+<4>  Where the maven-shade-plugin reads the main.verticle configuration
+<3>  The maven-exec-plugin runs our application locally
+<5>  Where the maven-shade-plugin reads the main.verticle configuration
+
 [source,xml]
 ....
 
@@ -54,12 +62,12 @@ Using the text editor of your choice open the pom.xml file.
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.vertx.conduit</groupId>
-  <artifactId>vertx-conduit-starter</artifactId>
+  <artifactId>vertx-conduit-starter</artifactId> 
   <version>1.0-SNAPSHOT</version>
 
   <properties>
     <vertx.version>3.5.2</vertx.version>
-    <main.verticle>io.vertx.conduit.MainVerticle</main.verticle>
+    <main.verticle>io.vertx.conduit.MainVerticle</main.verticle>          <1>
     <!-- HSQLDB -->
     <hsqldb.version>2.3.4</hsqldb.version>
     <!-- Flyway Database Migrations -->
@@ -85,7 +93,7 @@ Using the text editor of your choice open the pom.xml file.
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
+      <artifactId>vertx-core</artifactId>          <2>
     </dependency>
     <!-- 
       Vert.x-Web 
@@ -163,7 +171,7 @@ Using the text editor of your choice open the pom.xml file.
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
+        <artifactId>maven-shade-plugin</artifactId>          <3>
         <version>2.4.3</version>
         <executions>
           <execution>
@@ -176,7 +184,7 @@ Using the text editor of your choice open the pom.xml file.
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>io.vertx.core.Launcher</Main-Class>
-                    <Main-Verticle>${main.verticle}</Main-Verticle>
+                    <Main-Verticle>${main.verticle}</Main-Verticle>          <4>
                   </manifestEntries>
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
@@ -193,13 +201,13 @@ Using the text editor of your choice open the pom.xml file.
 
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
+        <artifactId>exec-maven-plugin</artifactId>          <5>
         <version>1.5.0</version>
         <configuration>
           <mainClass>io.vertx.core.Launcher</mainClass>
           <arguments>
             <argument>run</argument>
-            <argument>${main.verticle}</argument>
+            <argument>${main.verticle}</argument>          <6>
           </arguments>
         </configuration>
       </plugin>
