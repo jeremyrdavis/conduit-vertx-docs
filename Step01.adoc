@@ -1,14 +1,28 @@
 = Step 1 : Getting Started
 :source-highlighter: coderay
 
+== Key Terms in This Step
+pom.xml
+Fat jar (or Uber jar)
+Verticle
+JUnit
+Vertx JUnit 5 Extension
+Checkpoint
+Vertx WebClient
+
 == Clone the Vert.x Starter Project
+
 [source,shell]
-----
+
+....
+
 git clone https://github.com/jeremyrdavis/vertx-conduit-starter.git (1)
 cd vertx-conduit-starter (2)
 rm -Rf .git (3)
 git init (4)
-----
+
+....
+
 * This is a basic Vert.x project that we will use as a starting point
 * Change into the project directory
 * Delete the existing Git repository
@@ -17,10 +31,13 @@ git init (4)
 === Create a Remote Repository (Optional, but Recommended)
 Keeping a remote copy for yourself is useful while making changes
 Create a repository in Github
+
 [source,shell]
 ....
+
 git remote add origin https://github.com/[YOUR GITHUB NAME]/thinkster-vertx.git
 git push -u origin master
+
 ....
 
 === A Few Things About Your pom.xml
