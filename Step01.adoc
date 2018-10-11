@@ -20,6 +20,8 @@ endif::[]
 
 == Clone the Vert.x Starter Project
 
+The starter project contains "Step 0" of this tutorial.  It contains everything we need to get started implementing the Conduit application.
+
 [source,shell]
 
 ....
@@ -49,9 +51,11 @@ git push -u origin master
 ....
 
 === A Few Things About Your pom.xml
+
 Using the text editor of your choice open the pom.xml file.
 
 A few things to note:
+
 <1>  The "main.verticle" property is used by the maven-shade-plugin and the maven-exec-plugin to determine which Verticle runs when the application starts  (see <3> and <5> below)
 <2>  All of the necessary dependencies for this application are already in your pom.xml.  This is to prevent the hassle of fat-finger and copy/paste errors.  One of the things you will notice is the number of "vertx-" dependencies.  Vert.x is a modular toolkit, and you import various tools as you need them.  During this tutorial we will refer back to the pom.xml to illustrate this concept
 <3>  The maven-shade-plugin builds our fat jar
@@ -226,9 +230,6 @@ A few things to note:
 
 ....
 
-<1> The starter project contains "Step 0" of this tutorial
-<2> This class already exists.  It is where we will begin our work.  This property tells java which file in our fat jar should be run.
-
 === IDE Time
 
 ==== IntelliJ
@@ -267,12 +268,7 @@ You should successfully build and pass the default test.
 
 Open up the "target" directory, and you will see 2 jar files.  We will be running our application from the "-fat.jar"
 
-=== Launch our first Verticle
-
-Let's fire up our first verticle!
-
-NOTE: Verticles are the most basic unit of work in Vert.x
-
+=== Launch our Application
 
 [source,shell]
 ....
@@ -291,13 +287,26 @@ Open http://localhost:8080.  You should see, "Hello, Vert.x!"
 
 Ctrl + c to stop the server
 
-=== redeploy.sh
+==== What Did We Succeed in Deploying?
+
+Verticles are chunks of code that get deployed and run by Vert.x. A Vert.x instance maintains N event loop threads (where N by default is core*2) by default. Verticles can be written in any of the languages that Vert.x supports and a single application can include verticles written in multiple languages.
+
+You can think of a verticle as a bit like an actor in the Actor Model.
+
+An application would typically be composed of many verticle instances running in the same Vert.x instance at the same time. The different verticle instances communicate with each other by sending messages on the event bus.
+
+=== Another Way to Launch our Application
+
+redeploy.sh
+
 Our default project contains 2 redeploy files, "redeploy.sh" and "redeploy.bat," that will keep your application running and redploy when you make changes.
 
 Start your application with the redeploy scripts:
 [source,shell]
 ....
+
 ./redeploy.sh or redeploy.bat
+
 ....
 
 Open http://localhost:8080/
@@ -310,15 +319,16 @@ Check your browser again.  You should see, "Hello, Conduit"
 
 Stop your application with Ctrl + c
 
-== MainVerticleTest.java
+== Testing
 
-The vertx-conduit-starter project comes with a single Verticle, MainVerticle, and a single unit test, MainVerticleTest.  The complete class is annotated below, but open MainVerticleTest in your IDE (or editor) because we broke the test in the previous section, and it needs to be fixed.
+The vertx-conduit-starter project comes with a single Verticle, MainVerticle, and a single unit test, MainVerticleTest.  The complete class is annotated below.  Open MainVerticleTest in your IDE (or editor) because we broke the test in the previous section, and it needs to be fixed.
 
 === Vert.x JUnit 5 Integration
 https://vertx.io/preview/docs/vertx-junit5/java/
 
 [code,java]
 ....
+
 package io.vertx.conduit;
 
 import io.vertx.core.Vertx;     <1>
@@ -363,6 +373,7 @@ class MainVerticleTest {
 
 
 }
+
 ....
 
 <1>  We import and use a Vert.x object because we will spin up and run our Verticles within the unit test.  Vert.x is a toolkit unlike application servers or servlet containers.  We won't deploy anything to Vert.x; we run it directly.
