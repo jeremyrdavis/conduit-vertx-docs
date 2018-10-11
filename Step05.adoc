@@ -1,4 +1,4 @@
-= Step 5: Add JWT Support
+= Step 04 : Adding a Database
 :source-highlighter: coderay
 ifdef::env-github[]
 :tip-caption: :bulb:
@@ -10,193 +10,308 @@ endif::[]
 
 == Summary
 
-Now that we are authenticating users against the database its time to add JWT support.
+Now that we have stubbed out the Authentication endpoint it is time to do some real work.  In this step we will create a database for application and use it to authenticate the user json posted to the endpoint.
 
 == KeyTerms in this Step
 
-JWT
+* Flyway database migration tool: https://flywaydb.org
+* HyperSQL http://hsqldb.org/
 
-== Failure Time!
+* io.vertx.ext.auth.AuthProvider
+* io.vertx.ext.auth.jdbc.JDBCAuth
+* io.vertx.ext.jdbc.JDBCClient
 
-"Red, Green, Refactor" is the TDD mantra.  We are currently green which means its time to refactor.
+== Creating the Database
 
-We are only green because we stubbed out the JWT token response in AuthenticationEndpointTest:
+We will use the Flyway Maven plugin to perform our databse migrations.  Flyway has a command line tool and can be executed from Java, but the Maven plugin is simple to use, keeps us from having to install something on our laptops, and is in keeping with the way we are building and testing in this tutorial.  You can run Flyway commands like so:
 
-[code,java]
+[code,shell]
+....
+mvn flyway:migrate
 ....
 
- assertEquals("jwt.token.here", user.getString("token"));
+You can find the Flyway properties on line 17 of the pom.xml and the plugin on line 105.
 
-....
-
-Let's create a token and return it.
-
-=== Vertx Auth JWT
-
-The Vert.x Auth JWT dependency is already included in your pom.xml (check it out on line 58)
+The properties contain the HyperSQL configuration:
 
 [code,xml]
 ....
-
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-auth-jwt</artifactId>
-    </dependency>
-
+    <!-- Flyway Database Migrations -->
+    <flyway.url>jdbc:hsqldb:file:db/conduit</flyway.url>     <1>
+    <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>     <2>
+    <flyway.locations>filesystem:src/main/resources/db/migrations</flyway.locations>     <3>
 ....
 
-=== Generate a keystore
+<1> The filesystem location of our HyperSQL database
+<2> The JDBC driver
+<3> The location where we will keep our migration scripts
 
-There is, however, some other background work that needs to be done.  First we are going to need a keystore.
+=== Step 1: Create the Database
 
-We will use the JDK's included keytool to generate our keystore https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html
+Create a folder src/main/resources/db/migrations.  Create a new file named "V1_\_create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration.
 
-[code,bash]
+We can craft a "create table" statement using the values in the expected json returned from our endpoint.
+
+The json outlined in the API:
+
+[code,json]
+....
+{
+  "user": {
+    "email": "jake@jake.jake",
+    "token": "jwt.token.here",
+    "username": "jake",
+    "bio": "I work at statefarm",
+    "image": null
+  }
+}
 ....
 
-keytool -genseckey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg HMacSHA256 -keysize 2048 -alias HS256 -keypass secret
+produces the following table that we can use for authentication
 
-keytool -genkey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg RSA -keysize 2048 -alias RS256 -keypass secret -sigalg SHA256withRSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
-
-keytool -genkeypair -keystore keystore.jceks -storetype jceks -storepass secret -keyalg EC -keysize 256 -alias ES256 -keypass secret -sigalg SHA256withECDSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
-
+[code,sql]
+....
+create table if not exists USER (ID INT IDENTITY PRIMARY KEY ,
+  USERNAME VARCHAR(255) NOT NULL ,
+  EMAIL VARCHAR(255) NOT NULL UNIQUE,
+  BIO VARCHAR(255) ,
+  IMAGE VARCHAR(255) ,
+  PASSWORD VARCHAR(255) NOT NULL ,
+  PASSWORD_SALT VARCHAR(255));
 ....
 
-You should see a file, "keystore.jceks," in the root of your project directory
+You might have noticed that there is no Json field, "PASSWORD_SALT."  That column is required by Vert.x Authentication functionality.  We will get to that a bit later.
 
-=== Update Our Verticle
+Create a second migration file, V1.1_\_insert-user.sql in the same folder.  The insert contents are:
 
-1. Import JWTAuth
-2. Create a member variable for our JWTAuth
-3. Instantiate the object with our keystore
-4. Generate the token after successful database authentication
-5. Return the token
+[code,sql]
+....
+insert into USER (  
+    USERNAME,
+    EMAIL,
+    BIO,
+    IMAGE,
+    PASSWORD,
+    PASSWORD_SALT
+    ) values (
+    'jake',
+    'jake@jake.jake',
+    'I work at state farm',
+    NULL,
+    '39DF2CF3B01EA60EF66DE648CE6CE0B5AD3F99DC2E1816F79186741E9A0444C58B17580D8F9D48C0FB033606A8C515DA7C5B6C792B710ECCB9FEF1429D51E3CE',
+    'BFB49A9B9CDDDF7C488CB2D84E8DDED8EEC01FFDD26B487DC08E5A4CAB6E4D10');
+....
+
+All of these values except the password and the password_salt come from the API documentation.  The password and password salt were generated by Vert.x' JWTAuth framework.   We will cover that shortly.  In the meantime just trust us and use these values.
+
+Run the migration:
+
+[code,shell]
+....
+mvn flyway:migrate
+....
+
+You should see something similar to the following:
+
+[code,shell]
+....
+[INFO] --- flyway-maven-plugin:5.1.4:migrate (default-cli) @ vertx-conduit-starter ---
+[INFO] Flyway Community Edition 5.1.4 by Boxfuse
+[INFO] Database: jdbc:hsqldb:file:db/spike (HSQL Database Engine 2.3)
+[INFO] Successfully validated 2 migrations (execution time 00:00.010s)
+[INFO] Creating Schema History table: "PUBLIC"."flyway_schema_history"
+[INFO] Current version of schema "PUBLIC": << Empty Schema >>
+[INFO] Migrating schema "PUBLIC" to version 1 - create-user-table
+[INFO] Migrating schema "PUBLIC" to version 1.1 - insert-user
+[INFO] Successfully applied 2 migrations to schema "PUBLIC" (execution time 00:00.035s)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+....
+
+This created our user table (and a Flyway table that stores information about the migrations) and inserted the user from the documentation.
+
+NOTE: If for some reason something goes wrong with a Flyway migration you need to run "mvn flyway:repair" before rerunning the migration.
+
+== Step 2: Access the Database
+
+Add 2 classes to MainVerticle: JDBCAuth and JDBCClient:
 
 [code,java]
 ....
-
-  private JWTAuth jwtAuth;     <1>
+import io.vertx.ext.auth.jdbc.JDBCAuth;
+import io.vertx.ext.jdbc.JDBCClient;
 ...
 
-  @Override
-  public void start(Future<Void> future) {
-  ...
-    
-    // instantiate our JWT Auth Provider
-    jwtAuth = JWTAuth.create(vertx, new JsonObject()     <2>
-      .put("keyStore", new JsonObject()     
-        .put("type", "jceks")
-        .put("path", "keystore.jceks")
-        .put("password", "secret")));
-    ...
+  private JDBCAuth authProvider;
 
+  private JDBCClient jdbcClient;
+....
+
+Initialize the classes inside of MainVerticle's start method before the Router is initialized and configured:
+
+[souce,java]
+....
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()     <1>
+      .put("url", "jdbc:hsqldb:file:db/conduit")     <2>
+      .put("driver_class", "org.hsqldb.jdbcDriver")     <3>
+      .put("max_pool_size", 30));     <4>
+
+    authProvider = JDBCAuth.create(vertx, jdbcClient);     <5>
+    authProvider.setAuthenticationQuery("SELECT PASSWORD, PASSWORD_SALT FROM USER WHERE EMAIL = ?");     <6>
+....
+
+<1>  We instantiate the JDBCClient with the "createShared" method.  This will create a single instance that can be shared across Verticles.  We pass in the vertx member variable and a JsonObject for configuration.  Using Json for configuration is the default Vert.x approach.
+<2>  The connection url points to the location where we will keep our database.  Flyway will create the "db" folder if it doesn't exist.  It's perfectly fine to keep the database in the project's root directory, but you might want to add "db/" to your .gitignore file.
+<3>  We add the appropriate JDBC driver to the configuration.
+<4>  This isn't terribly important in development, but we set the connection pool size anyway.
+<5>  We instantiate the JDBCAuth AuthProvider with the vertx member variable and the JDBCClient we just created.
+<6>  JDBCAuth expects us to authenticate against the "user" and "password" fields.  Our API, however, uses "email" and "password" so we are overriding the default query with one checks the "EMAIL" column instead of the "USER" column.
+
+IMPORTANT: Read 6 above
+
+Delete (or comment out) the stubbed out functionality in the loginHandler method because its time to build the real method.
+
+The first step is to grab the user from the Json posted to our endpoint.
+
+Json:
+[code,json]
+....
+{
+  "user":{
+    "email": "jake@jake.jake",
+    "password": "jakejake"
+  }
+}
+....
+
+Code that pulls the user from the post:
+[code,java]
+....
+    JsonObject user = context.getBodyAsJson().getJsonObject("user");
+    JsonObject authInfo = new JsonObject()
+      .put("username", user.getString("email"))     <1>
+      .put("password", user.getString("password"));
+....
+
+<1>  Vert.x' JDBCAuth expects a parameter, "username," but we only have, "email."  Because of this we updated the query to pull from email, and we are passing in the supplied email with the key, "username."  This is just a workaround.
+
+NOTE: There is an easier way to get Json from a request.  We will get to that shortly.
+
+== Step 3: Authenticate Against the Database
+
+[code,java]
+....
+    HttpServerResponse response = context.response();     <1>
+
+    authProvider.authenticate(authInfo, ar -> {     <2>
+      if (ar.succeeded()) {     <3>
+        JsonObject returnValue = new JsonObject()     <4>
+        .put("user", new JsonObject()
+          .put("email", "jake@jake.jake")
+          .put("password", "jakejake")
+          .put("token", "jwt.token.here")
+          .put("username", "jake")
+          .put("bio", "I work at statefarm")
+          .put("image", ""));
+
+        response.setStatusCode(200)
+        .putHeader("Content-Type", "application/json; charset=utf-8")
+        .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+        .end(returnValue.encode());     <5>
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
+....
+
+<1>  Create an HttpServerResponse for obvious reasons
+<2>  This method call, "authProvider.authenticate," does all of the work.  We pass in the authentication info from the request and a lambda to handle success or failure.
+<3>  If the user is authenticated we stub out the response becaue we aren't pulling the entire user from the database yet.
+<4>  Create a JsonObject and stub it out with expected values.
+<5>  JsonObject.encode() encodes the JsonObject as a String.
+
+The complete method is below so that you can check against it:
+
+[code,java]
+....
   private void loginHandler(RoutingContext context) {
-  ...
+    JsonObject user = context.getBodyAsJson().getJsonObject("user");
+    user.put("username", "placeholder");
 
-      authProvider.authenticate(authInfo, ar -> {
+    JsonObject authInfo = new JsonObject()
+      .put("username", user.getString("email"))
+      .put("password", user.getString("password"));
+    System.out.println(user);
+
+    HttpServerResponse response = context.response();
+
+    authProvider.authenticate(authInfo, ar -> {
       if (ar.succeeded()) {
-
-        // generate our JWT token
-        String token = jwtAuth.generateToken(authInfo, new JWTOptions().setIgnoreExpiration(true));   <3>
 
         JsonObject returnValue = new JsonObject()
           .put("user", new JsonObject()
             .put("email", "jake@jake.jake")
             .put("password", "jakejake")
-            .put("token", token)     <4>
+            .put("token", "jwt.token.here")
             .put("username", "jake")
             .put("bio", "I work at statefarm")
             .put("image", ""));
+        System.out.println(returnValue);
 
-....
-
-<1> Add the member variable below the JDBCAuth
-<2> Instatiate the jwtAuth with our keystore
-<3> Generate a token
-<4> Return the token
-
-=== Run the test
-
-Your test will still fail.  Change the test so that it no longer checks for "jwt.token.here":
-
-[code,java]
-....
-
-  assertNotNull(user.getString("token"));
-
-....
-
-Now you should pass!
-
-=== One more thing
-
-We are going to need to use the valid token in upcoming tests.  Create a new file, "TestConstants.java" in your test directory to hold the token and other values we will be using.
-
-Print out the value of the returned user object.  We will need to copy the token and use it in our next tests.
-
-[code,java]
-....
-
-@Test
-  public void testAuthentication(Vertx vertx, VertxTestContext testContext){
-    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
-      WebClient webClient = WebClient.create(vertx);
-      webClient.post(8080, "localhost", "/api/users/login")
-        .sendJsonObject(new JsonObject()
-        .put("user", new JsonObject()
-          .put("email", "jake@jake.jake")
-          .put("password", "jakejake")
-        ), response -> testContext.verify(() -> {
-        JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");
-        System.out.println(user.encodePrettily());     <1>
-        assertEquals(200, response.result().statusCode());
-        assertEquals("jake@jake.jake", user.getString("email"));
-        assertEquals("jakejake", user.getString("password"));
-        assertNotNull( user.getString("token"));
-        assertEquals("jake", user.getString("username"));
-        assertEquals("I work at statefarm", user.getString("bio"));
-        assertEquals("", user.getString("image"));
-        testContext.completeNow();
-      }));
-    }));
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "application/json; charset=utf-8")
+          .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+          .end(returnValue.encode());
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
   }
-
 ....
 
-<1> Print out the user
+=== Verify with the MainVerticleTest
 
-Rerun your test and you should see something like the following:
-
-[code,bash]
+[code,shell]
 ....
 mvn clean test
-...
-
-{
-  "email" : "jake@jake.jake",
-  "password" : "jakejake",
-  "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTEzMTU0OH0.zT2RsdHYvSjKit341RlOjL-w3zM0ujM8WVC_iCTigzI",     <1>
-  "username" : "jake",
-  "bio" : "I work at statefarm",
-  "image" : ""
-}
-
 ....
 
-<1> Copy the token value and paste it into the TestConstants:
+It should pass.
+
+== Step 4: Get the User Information from the Database and Return It
+
+Remove the stubbed out "put" methods of our JsonObject "returnValue" so that we have room to work:
 
 [code,java]
 ....
+    authProvider.authenticate(authInfo, ar -> {
+      if (ar.succeeded()) {
 
-package io.vertx.conduit;
+        JsonObject returnValue = new JsonObject();
 
-public class TestConstants {
-
-  public static final String TOKEN_JAKE = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTExODYyM30.XnILp6FdRdbSsxdWKsJoF_kcdVE3nWPS6w93zJgiMyY"; <1>
-
-}
-
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "application/json; charset=utf-8")
+          .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
+          .end(returnValue.encode());
+      }else{
+        response.setStatusCode(200)
+          .putHeader("Content-Type", "text/html")
+          .end("Authentication Failed: " + ar.cause());
+      }
+    });
 ....
 
-<1> Add "Bearer " to the token you copied to form the String.  We will get to why in the next step.
+It's probably not a bad idea to run our tests again as a sanity check to make sure the tests are executing correctly.
+
+[code,shell]
+....
+mvn clean test
+....
+
+Should produce failing tests.
 

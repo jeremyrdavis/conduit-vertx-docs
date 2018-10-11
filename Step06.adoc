@@ -1,4 +1,4 @@
-= Step 06 : Authentication with JWT
+= Step 5: Add JWT Support
 :source-highlighter: coderay
 ifdef::env-github[]
 :tip-caption: :bulb:
@@ -10,22 +10,7 @@ endif::[]
 
 == Summary
 
-Now that we are authenticating users against the database and createing JWT tokens we can lock down our endpoints.  The first protected endpoint we will implement is  "GET /api/user" which requires JWT authentication and returns the authenticated user, in our case "jake":
-
-[code,json]
-....
-
-    {
-        "user": {
-        "email": "jake@jake.jake",
-        "token": "jwt.token.here",
-        "username": "jake",
-        "bio": "I work at statefarm",
-        "image": null
-        }
-    }
-
-....
+Now that we are authenticating users against the database its time to add JWT support.
 
 == KeyTerms in this Step
 
@@ -33,61 +18,185 @@ JWT
 
 == Failure Time!
 
-Create a new class GetCurrentUserEndpointTest in our test package, with a single test method, "testGetCurrentUser" :
+"Red, Green, Refactor" is the TDD mantra.  We are currently green which means its time to refactor.
+
+We are only green because we stubbed out the JWT token response in AuthenticationEndpointTest:
+
+[code,java]
+....
+
+ assertEquals("jwt.token.here", user.getString("token"));
+
+....
+
+Let's create a token and return it.
+
+=== Vertx Auth JWT
+
+The Vert.x Auth JWT dependency is already included in your pom.xml (check it out on line 58)
+
+[code,xml]
+....
+
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-auth-jwt</artifactId>
+    </dependency>
+
+....
+
+=== Generate a keystore
+
+There is, however, some other background work that needs to be done.  First we are going to need a keystore.
+
+We will use the JDK's included keytool to generate our keystore https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html
+
+[code,bash]
+....
+
+keytool -genseckey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg HMacSHA256 -keysize 2048 -alias HS256 -keypass secret
+
+keytool -genkey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg RSA -keysize 2048 -alias RS256 -keypass secret -sigalg SHA256withRSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+
+keytool -genkeypair -keystore keystore.jceks -storetype jceks -storepass secret -keyalg EC -keysize 256 -alias ES256 -keypass secret -sigalg SHA256withECDSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+
+....
+
+You should see a file, "keystore.jceks," in the root of your project directory
+
+=== Update Our Verticle
+
+1. Import JWTAuth
+2. Create a member variable for our JWTAuth
+3. Instantiate the object with our keystore
+4. Generate the token after successful database authentication
+5. Return the token
+
+[code,java]
+....
+
+  private JWTAuth jwtAuth;     <1>
+...
+
+  @Override
+  public void start(Future<Void> future) {
+  ...
+    
+    // instantiate our JWT Auth Provider
+    jwtAuth = JWTAuth.create(vertx, new JsonObject()     <2>
+      .put("keyStore", new JsonObject()     
+        .put("type", "jceks")
+        .put("path", "keystore.jceks")
+        .put("password", "secret")));
+    ...
+
+  private void loginHandler(RoutingContext context) {
+  ...
+
+      authProvider.authenticate(authInfo, ar -> {
+      if (ar.succeeded()) {
+
+        // generate our JWT token
+        String token = jwtAuth.generateToken(authInfo, new JWTOptions().setIgnoreExpiration(true));   <3>
+
+        JsonObject returnValue = new JsonObject()
+          .put("user", new JsonObject()
+            .put("email", "jake@jake.jake")
+            .put("password", "jakejake")
+            .put("token", token)     <4>
+            .put("username", "jake")
+            .put("bio", "I work at statefarm")
+            .put("image", ""));
+
+....
+
+<1> Add the member variable below the JDBCAuth
+<2> Instatiate the jwtAuth with our keystore
+<3> Generate a token
+<4> Return the token
+
+=== Run the test
+
+Your test will still fail.  Change the test so that it no longer checks for "jwt.token.here":
+
+[code,java]
+....
+
+  assertNotNull(user.getString("token"));
+
+....
+
+Now you should pass!
+
+=== One more thing
+
+We are going to need to use the valid token in upcoming tests.  Create a new file, "TestConstants.java" in your test directory to hold the token and other values we will be using.
+
+Print out the value of the returned user object.  We will need to copy the token and use it in our next tests.
+
+[code,java]
+....
+
+@Test
+  public void testAuthentication(Vertx vertx, VertxTestContext testContext){
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      WebClient webClient = WebClient.create(vertx);
+      webClient.post(8080, "localhost", "/api/users/login")
+        .sendJsonObject(new JsonObject()
+        .put("user", new JsonObject()
+          .put("email", "jake@jake.jake")
+          .put("password", "jakejake")
+        ), response -> testContext.verify(() -> {
+        JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");
+        System.out.println(user.encodePrettily());     <1>
+        assertEquals(200, response.result().statusCode());
+        assertEquals("jake@jake.jake", user.getString("email"));
+        assertEquals("jakejake", user.getString("password"));
+        assertNotNull( user.getString("token"));
+        assertEquals("jake", user.getString("username"));
+        assertEquals("I work at statefarm", user.getString("bio"));
+        assertEquals("", user.getString("image"));
+        testContext.completeNow();
+      }));
+    }));
+  }
+
+....
+
+<1> Print out the user
+
+Rerun your test and you should see something like the following:
+
+[code,bash]
+....
+mvn clean test
+...
+
+{
+  "email" : "jake@jake.jake",
+  "password" : "jakejake",
+  "token" : "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTEzMTU0OH0.zT2RsdHYvSjKit341RlOjL-w3zM0ujM8WVC_iCTigzI",     <1>
+  "username" : "jake",
+  "bio" : "I work at statefarm",
+  "image" : ""
+}
+
+....
+
+<1> Copy the token value and paste it into the TestConstants:
 
 [code,java]
 ....
 
 package io.vertx.conduit;
 
+public class TestConstants {
 
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.WebClient;
-import io.vertx.ext.web.codec.BodyCodec;
-import io.vertx.junit5.Checkpoint;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+  public static final String TOKEN_JAKE = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Impha2VAamFrZS5qYWtlIiwicGFzc3dvcmQiOiJqYWtlamFrZSIsImlhdCI6MTUzOTExODYyM30.XnILp6FdRdbSsxdWKsJoF_kcdVE3nWPS6w93zJgiMyY"; <1>
 
-import static io.vertx.conduit.MainVerticle.CONTENT_TYPE_JSON;
-import static io.vertx.conduit.MainVerticle.HEADER_CONTENT_TYPE;
-import static io.vertx.conduit.TestConstants.TOKEN_INVALID;
-import static io.vertx.conduit.TestConstants.TOKEN_JAKE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-@DisplayName("Get Current User Endpoint Tests")
-@ExtendWith(VertxExtension.class)
-public class GetCurrentUserEndpointTest {
-
-  @Test
-  public void testGetCurrentUser(Vertx vertx, VertxTestContext testContext){
-
-    Checkpoint responseReceived = testContext.checkpoint();
-    Checkpoint testComplete = testContext.checkpoint();
-
-    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
-
-      WebClient webClient = WebClient.create(vertx);
-
-      webClient.get(8080, "localhost", "/api/user")
-        .putHeader("Authorization", TOKEN_JAKE)          <1>
-        .as(BodyCodec.jsonObject())
-        .send(testContext.succeeding(response -> {
-          testContext.verify(()->{
-            responseReceived.flag();
-            assertEquals(CONTENT_TYPE_JSON, response.getHeader(HEADER_CONTENT_TYPE));          <2>
-            assertEquals(200, response.statusCode());
-            JsonObject user = response.body();
-            System.out.println(user);
-            assertNotNull(user);
-            testComplete.flag();
-          });
-        }));
-    }));
-  }
+}
 
 ....
+
+<1> Add "Bearer " to the token you copied to form the String.  We will get to why in the next step.
+
