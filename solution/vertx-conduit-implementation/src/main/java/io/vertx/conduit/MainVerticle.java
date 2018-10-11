@@ -3,11 +3,14 @@ package io.vertx.conduit;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.jdbc.JDBCAuth;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.jwt.JWTOptions;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -17,6 +20,7 @@ public class MainVerticle extends AbstractVerticle {
 
   public static final String HEADER_CONTENT_TYPE = "Content-Type";
   public static final String CONTENT_TYPE_JSON = "application/json; charset=utf-8";
+  private static final String GET_USER_BY_EMAIL = "SELECT * FROM USER WHERE EMAIL = ?";
 
   private JDBCAuth authProvider;
 
@@ -69,6 +73,26 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void getUserHandler(RoutingContext context) {
+
+    String headerAuth = context.request().getHeader("Authorization");
+    System.out.println("headerAuth: " + headerAuth);
+    String[] values = headerAuth.split(" ");
+    System.out.println("values[1]: " + values[1]);
+    jwtAuth.authenticate(new JsonObject()
+        .put("jwt", values[1]), res -> {
+      if (res.succeeded()) {
+        User theUser = res.result();
+        JsonObject principal = theUser.principal();
+        System.out.println("theUser: " + theUser.principal().encodePrettily());
+      }else{
+        //failed!
+        System.out.println("authentication failed ");
+      }
+
+    });
+
+
+
     JsonObject returnValue = new JsonObject()
       .put("user", new JsonObject()
         .put("email", "jake@jake.jake")
@@ -96,9 +120,42 @@ public class MainVerticle extends AbstractVerticle {
     authProvider.authenticate(authInfo, ar -> {
       if (ar.succeeded()) {
 
-        // generate our JWT token
-        String token = jwtAuth.generateToken(authInfo, new JWTOptions().setIgnoreExpiration(true));
+        System.out.println("authentication succeeded");
 
+        // lookup the user
+        jdbcClient.queryWithParams(GET_USER_BY_EMAIL, new JsonArray().add(ar.result().principal().getString("username")), fetch -> {
+
+          if (fetch.succeeded()) {
+            JsonObject completeUser = new JsonObject();
+            ResultSet resultSet = fetch.result();
+            if (resultSet.getNumRows() == 0) {
+              context.fail(new Throwable("NOT FOUND"));
+            }else{
+              JsonArray rs = resultSet.getResults().get(0);
+              System.out.println(completeUser);
+              String token = jwtAuth.generateToken(completeUser, new JWTOptions().setIgnoreExpiration(true));
+              response.setStatusCode(200)
+                .putHeader("Content-Type", "application/json; charset=utf-8")
+//                .putHeader("Content-Length", completeUser.toString().length())
+                .end(completeUser.encodePrettily());
+
+/*
+              JsonArray row = resultSet.getResults().get(0);
+              response.put("id", row.getInteger(0));
+              response.put("rawContent", row.getString(1));
+*/
+            }
+          }else{
+            response.setStatusCode(204)
+              .putHeader("Content-Type", "text/html")
+              .end("Lookup Failed: " + fetch.cause());
+          }
+        });
+
+        // generate our JWT token
+
+/*
+        System.out.println(ar.result().principal());
         JsonObject returnValue = new JsonObject()
           .put("user", new JsonObject()
             .put("email", "jake@jake.jake")
@@ -108,13 +165,10 @@ public class MainVerticle extends AbstractVerticle {
             .put("bio", "I work at statefarm")
             .put("image", ""));
         System.out.println(returnValue);
+*/
 
-        response.setStatusCode(200)
-          .putHeader("Content-Type", "application/json; charset=utf-8")
-          .putHeader("Content-Length", String.valueOf(returnValue.toString().length()))
-          .end(returnValue.encode());
       }else{
-        response.setStatusCode(200)
+        response.setStatusCode(401)
           .putHeader("Content-Type", "text/html")
           .end("Authentication Failed: " + ar.cause());
       }

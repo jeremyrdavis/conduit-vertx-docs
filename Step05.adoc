@@ -1,4 +1,4 @@
-= Step 5: JWT Authentication
+= Step 5: Add JWT Support
 :source-highlighter: coderay
 ifdef::env-github[]
 :tip-caption: :bulb:

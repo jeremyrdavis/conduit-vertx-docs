@@ -33,53 +33,61 @@ JWT
 
 == Failure Time!
 
-Create a new class JWTAuthenticationTest in our test package, with a single test method, "GetCurrentUserEndpointTest" :
+Create a new class GetCurrentUserEndpointTest in our test package, with a single test method, "testGetCurrentUser" :
 
 [code,java]
 ....
 
 package io.vertx.conduit;
 
+
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.codec.BodyCodec;
+import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import static io.vertx.conduit.MainVerticle.CONTENT_TYPE_JSON;
+import static io.vertx.conduit.MainVerticle.HEADER_CONTENT_TYPE;
+import static io.vertx.conduit.TestConstants.TOKEN_INVALID;
+import static io.vertx.conduit.TestConstants.TOKEN_JAKE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@DisplayName("Authentication Endpoint Tests")
+@DisplayName("Get Current User Endpoint Tests")
 @ExtendWith(VertxExtension.class)
-public class AuthenticationEndpointTest {
+public class GetCurrentUserEndpointTest {
 
   @Test
-  public void testSuccessfulAuthentication(Vertx vertx, VertxTestContext testContext){
+  public void testGetCurrentUser(Vertx vertx, VertxTestContext testContext){
+
+    Checkpoint responseReceived = testContext.checkpoint();
+    Checkpoint testComplete = testContext.checkpoint();
+
     vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+
       WebClient webClient = WebClient.create(vertx);
-      webClient.post(8080, "localhost", "/api/users/login")
-        .sendJsonObject(new JsonObject()          <1>
-        .put("user", new JsonObject()     
-          .put("email", "jake@jake.jake")
-          .put("password", "jakejake")
-        ), response -> testContext.verify(() -> {          <2>
-        JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");          <3>
-          System.out.println(user.encodePrettily());
-          assertEquals(200, response.result().statusCode());
-        assertEquals("jake@jake.jake", user.getString("email"));
-        assertEquals("jakejake", user.getString("password"));
-        assertNotNull( user.getString("token"));
-        assertEquals("jake", user.getString("username"));
-        assertEquals("I work at statefarm", user.getString("bio"));
-        assertEquals("", user.getString("image"));
-        testContext.completeNow();
-      }));
+
+      webClient.get(8080, "localhost", "/api/user")
+        .putHeader("Authorization", TOKEN_JAKE)          <1>
+        .as(BodyCodec.jsonObject())
+        .send(testContext.succeeding(response -> {
+          testContext.verify(()->{
+            responseReceived.flag();
+            assertEquals(CONTENT_TYPE_JSON, response.getHeader(HEADER_CONTENT_TYPE));          <2>
+            assertEquals(200, response.statusCode());
+            JsonObject user = response.body();
+            System.out.println(user);
+            assertNotNull(user);
+            testComplete.flag();
+          });
+        }));
     }));
   }
-}
-
 
 ....
