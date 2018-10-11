@@ -321,10 +321,21 @@ Stop your application with Ctrl + c
 
 == Testing
 
-The vertx-conduit-starter project comes with a single Verticle, MainVerticle, and a single unit test, MainVerticleTest.  The complete class is annotated below.  Open MainVerticleTest in your IDE (or editor) because we broke the test in the previous section, and it needs to be fixed.
+The vertx-conduit-starter project comes with a single Verticle, MainVerticle, and a single unit test, MainVerticleTest (the complete class is annotated below) 
+
+MainVerticleTest introduces several new concepts the most important of which are the Vert.x WebClient and Vert.x JUnit Integration
+
+=== Vert.x WebClient
 
 === Vert.x JUnit 5 Integration
 https://vertx.io/preview/docs/vertx-junit5/java/
+
+Testing asynchronous operations requires more tools than what a test harness like JUnit provides.  Vertx JUnit 5 Extension adds classes to make asynchronous testing easy.
+
+=== Passing our Test
+
+Open MainVerticleTest in your IDE (or editor) because we broke the test in the previous section, and it needs to be fixed.
+
 
 [code,java]
 ....
@@ -395,3 +406,73 @@ Java Magazine also devoted an issue to its' release: http://www.javamagazine.moz
 <15>  We use testContext.verify to check the values returned from our endpoint.
 <16>  We flag our second Checkpoint to signal the end of the test.
 
+=== Pass the test
+
+At this point the test should fail because it is expecting the text, "Hello, Vert.x!" and we changed our response to "Hello, Conduit!"  Feel free to verify by running:
+
+[code,shell]
+....
+
+mvn clean test
+
+....
+
+Since we want a different response change the expected text in MainVerticleTest to "Hello, Conduit!"  (line 39)
+
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.core.Vertx;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.codec.BodyCodec;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+
+@DisplayName("MainVerticle Test")
+@ExtendWith(VertxExtension.class)
+class MainVerticleTest {
+
+  @Test
+  @DisplayName("Server Started Test")
+  void testServerStart(Vertx vertx, VertxTestContext testContext) {
+    WebClient webClient = WebClient.create(vertx);
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint requestCheckpoint = testContext.checkpoint();
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+
+      webClient.get(8080, "localhost", "/")
+        .as(BodyCodec.string())
+        .send(testContext.succeeding(resp -> {
+          testContext.verify(() -> {
+            assertEquals(200, resp.statusCode());
+            assertEquals("Hello, Conduit!", resp.body());         <1>
+            requestCheckpoint.flag();
+          });
+        }));
+    }));
+  }
+
+
+}
+
+....
+
+<1>  Our updated text
+
+== Conclusion
+
+In Step1 we covered the Vert.x basics including:
+* Verticles
+* JUnit integration
