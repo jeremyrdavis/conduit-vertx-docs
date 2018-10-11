@@ -268,7 +268,7 @@ You should successfully build and pass the default test.
 
 Open up the "target" directory, and you will see 2 jar files.  We will be running our application from the "-fat.jar"
 
-=== Launch our Application
+=== Deploying our Application
 
 [source,shell]
 ....
