@@ -308,6 +308,8 @@ public class MainVerticle extends AbstractVerticle {
 <4>  Set the content type 
 <6>  Return the Json
 
+At this point our test will pass, but it isn't really doing anything.  We need to insert the user into the database.
+
 == Lookuping the User
 
 We have the endpoint, but it isn't doing anything at the moment.  In order to actually authenticate users we will need to look them up from a database.  To do that we will need to:
