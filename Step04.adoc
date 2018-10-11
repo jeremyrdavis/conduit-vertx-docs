@@ -3,7 +3,7 @@
 
 == Summary
 
-The first endpoint that we implement will be the Authentication endpoint (see next section.)  There are 2 reasons for this:
+The second endpoint that we implement will be the Authentication endpoint (see next section.)  There are 2 reasons for this:
 1. Since most of the endpoints require authentication it is a reasonable place to start
 2. The 3 tutorials at Thinkster.io all start with the Authentication endpoint, and we are doing our best to follow along
 

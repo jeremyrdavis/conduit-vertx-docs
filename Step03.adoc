@@ -3,22 +3,69 @@
 
 == Summary
 
-The first endpoint that we implement will be the Authentication endpoint (see next section.)  There are 2 reasons for this:
-1. Since most of the endpoints require authentication it is a reasonable place to start
-2. The 3 tutorials at Thinkster.io all start with the Authentication endpoint, and we are doing our best to follow along
+The first endpoint that we will implement will be the Registration endpoint
+
+POST /api/users
+
+Request body:
+
+[code,json]
+....
+
+{
+  "user":{
+    "username": "Jacob",
+    "email": "jake@jake.jake",
+    "password": "jakejake"
+  }
+}
+
+....
+
+Expected response:
+
+[code,json]
+....
+
+{
+  "user": {
+    "email": "jake@jake.jake",
+    "token": "jwt.token.here",
+    "username": "jake",
+    "bio": "I work at statefarm",
+    "image": null
+  }
+}
+
+....
+
+Starting with Registration will make it easy to add new users because we can simply excercise our test cases with new values.  It will also introduce many of the core concepts that we will be using including:
+
+Vertx WebClient for making HTTP calls
+Vertx JDBC for database access
+Flyway for databse migrations
+
+The 3 tutorials at Thinkster.io all start with the Authentication endpoint.  We will get to that one in the next section.
+
+== Test Driven Development
+
+Red, Green, Refactor...
 
 Our first step will be to create a test (of course) and stub out the respone.
-Our second step will be to add a databse 
-step will be to create a test that attempts to authenticate using the example user, "jake@jake.jake"
 We will then build the code to pass the test
+* create our database using Flyway
 * create a REST endpoint that accepts JSON in the expected format
-* stub out the authentication and simply check hard coded values
+* marshall the JSON into a domain object
+* persist the User posted to our endpoint
 * return the expected JSON User representation
 
 == KeyTerms in this Step
 
+Verticle
 JsonObject
-
+WebClient
+VertxUnitRunner
+Flyway
 
 == Authentication (Login) Endpoint
 The first endpoint we will implement is the Authentication endpoint, documented here:
