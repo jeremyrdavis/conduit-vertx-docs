@@ -31,10 +31,10 @@ git init (4)
 
 ....
 
-* This is a basic Vert.x project that we will use as a starting point
-* Change into the project directory
-* Delete the existing Git repository
-* Initialize a new Git repository to hold our changes
+<1>  This is a basic Vert.x project that we will use as a starting point
+<2>  Change into the project directory
+<3>  Delete the existing Git repository
+<4>  Initialize a new Git repository to hold our changes
 
 === Create a Remote Repository (Optional, but Recommended)
 Keeping a remote copy for yourself is useful while making changes
@@ -43,7 +43,7 @@ Create a repository in Github
 [source,shell]
 ....
 
-git remote add origin https://github.com/[YOUR GITHUB NAME]/thinkster-vertx.git
+git remote add origin https://github.com/[YOUR GITHUB NAME]/vertx-conduit-starter.git
 git push -u origin master
 
 ....
