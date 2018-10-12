@@ -1,0 +1,11 @@
+-------------------------------------------------------------------------------
+Test set: io.vertx.conduit.RegistrationEndpointTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.917 s <<< FAILURE! - in io.vertx.conduit.RegistrationEndpointTest
+testAuthentication{Vertx, VertxTestContext}  Time elapsed: 0.913 s  <<< ERROR!
+io.vertx.core.json.DecodeException: 
+Failed to decode: Unrecognized token 'Hello': was expecting ('true', 'false' or 'null')
+ at [Source: (String)"Hello, Conduit!"; line: 1, column: 6]
+	at io.vertx.conduit.RegistrationEndpointTest.lambda$null$0(RegistrationEndpointTest.java:31)
+	at io.vertx.conduit.RegistrationEndpointTest.lambda$null$1(RegistrationEndpointTest.java:29)
+
