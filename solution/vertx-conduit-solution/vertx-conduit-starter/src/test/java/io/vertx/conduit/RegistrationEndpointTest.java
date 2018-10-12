@@ -29,7 +29,7 @@ public class RegistrationEndpointTest {
             .put("password", "jakejake")
           ), response -> testContext.verify(() -> {
           assertEquals(201, response.result().statusCode());
-          User returnedUser = Json.decodeValue(response.result().bodyAsString(), User.class);
+          User returnedUser = new User(response.result().bodyAsJsonObject().getJsonObject("user"));
           assertEquals("jake@jake.jake", returnedUser.getEmail());
           assertEquals("Jacob", returnedUser.getUsername());
           testContext.completeNow();
