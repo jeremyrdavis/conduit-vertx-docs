@@ -16,6 +16,13 @@ public class User {
 
   public JsonObject toJsonObject() {
 
+    return new JsonObject()
+      .put("user", new JsonObject()
+        .put("email", this.email)
+        .put("token", this.token)
+        .put("username", this.username)
+        .put("bio", this.bio)
+        .put("image", this.image));
   }
 
   /**

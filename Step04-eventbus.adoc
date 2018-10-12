@@ -1,0 +1,184 @@
+= Step04: The Vert.x Event Bus
+:source-highlighter: prettify
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+== Summary
+
+In this step we will create a Verticle to handle our database functionality and use Vert.x Event Bus to communicate with it from our MainVerticle.
+
+== Introducing the Vert.x Event Bus
+
+The event bus is the nervous system of Vert.x.  
+
+There is a single event bus instance for every Vert.x instance.  The event bus allows different parts of your application to communicate with each other irrespective of what language they are written in
+
+It can even be bridged to allow client side JavaScript running in a browser to communicate on the same event bus
+
+Vert.x' event bus supports publish/subscribe, point to point, and request-response messaging.
+
+The event bus API is very simple. It basically involves registering handlers, unregistering handlers and sending and publishing messages.
+
+=== Addressing
+Messages are sent on the event bus to an address.
+
+Vert.x doesn’t bother with any fancy addressing schemes. In Vert.x an address is simply a string. Any string is valid. However it is wise to use some kind of scheme, e.g. using periods to demarcate a namespace.
+
+Some examples of valid addresses are "europe.news.feed1," "acme.games.pacman," "sausages," and "X."
+
+=== Handlers
+Messages are received in handlers. You register a handler at an address.  Many different handlers can be registered at the same address, and a single handler can be registered at many different addresses.
+
+=== Publish / subscribe messaging
+The event bus supports publishing messages.  Messages are published to an address. Publishing means delivering the message to all handlers that are registered at that address.
+
+This is the familiar publish/subscribe messaging pattern.
+
+=== Point to point and Request-Response messaging
+The event bus also supports point to point messaging.
+
+Messages are sent to an address. Vert.x will then route it to just one of the handlers registered at that address.  If there is more than one handler registered at the address, one will be chosen using a non-strict round-robin algorithm.
+
+With point to point messaging, an optional reply handler can be specified when sending the message.
+
+When a message is received by a recipient, and has been handled, the recipient can optionally decide to reply to the message. If they do so the reply handler will be called.
+
+When the reply is received back at the sender, it too can be replied to. This can be repeated ad-infinitum, and allows a dialog to be set-up between two different verticles.
+
+This is a common messaging pattern called the request-response pattern.
+
+=== Best-effort delivery
+Vert.x does it’s best to deliver messages and won’t consciously throw them away. This is called best-effort delivery.  However, in case of failure of all or parts of the event bus, there is a possibility messages will be lost.
+
+If your application cares about lost messages, you should code your handlers to be idempotent, and your senders to retry after recovery.
+
+=== Types of messages
+Out of the box Vert.x allows any primitive/simple type, String, or buffers to be sent as messages.  However it’s a convention and common practice in Vert.x to send messages as JSON.  JSON is very easy to create, read and parse in all the languages that Vert.x supports so it has become a kind of lingua franca for Vert.x.
+
+However you are not forced to use JSON if you don’t want to.
+
+== Fail a Test!
+
+Create a new test, DatabaseVerticleTest:
+
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.conduit.model.User;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DisplayName("Database Event Bus Tests")
+@ExtendWith(VertxExtension.class)
+public class DatabaseVerticleTest {
+
+  @BeforeEach
+  void setUp(Vertx vertx, VertxTestContext testContext) {
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    vertx.deployVerticle(new DatabaseVerticle(), testContext.succeeding(id -> {
+      assertNotNull(id);
+      deploymentCheckpoint.flag();
+    }));
+  }
+
+  @AfterEach
+  void tearDown(Vertx vertx, VertxTestContext testContext) {
+    vertx.close();
+  }
+
+  @Test
+  @DisplayName("Register User Test")
+  void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
+
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+
+    User user = new User("user1@user.com", null, "user1", "user1's bio", null);
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, "registerUser")          <1>
+      .put("user", Json.encode(user));
+
+    vertx.eventBus().send(PERSISTENCE_ADDRESS, message, ar -> {          <1>
+      assertTrue(ar.succeeded());
+      JsonObject result = (JsonObject) ar.result().body();
+      assertEquals("success", result.getString("outcome"));
+      replyCheckpoint.flag();
+    });
+  }
+
+}
+
+....
+<1> Trickeration.  We are going to make a publicly available constant in a minute
+
+== Pass the Test (for a moment anyway)
+
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.json.JsonObject;
+
+public class DatabaseVerticle extends AbstractVerticle {
+
+  public static final String PERSISTENCE_ADDRESS = "persistence-address";
+  public static final String PERSISTENCE_ACTION = "action";
+  public static final String PERSISTENCE_ACTION_REGISTER = "register";
+  public static final String PERSISTENCE_OUTCOME = "outcome";
+  public static final String PERSISTENCE_OUTCOME_SUCCESS = "success";
+  public static final String PERSISTENCE_OUTCOME_FAILURE = "failure";
+
+
+  @Override
+  public void start(Future<Void> startFuture) throws Exception {
+
+    EventBus eventBus = vertx.eventBus();
+    MessageConsumer<JsonObject> consumer = eventBus.consumer(PERSISTENCE_ADDRESS);
+    consumer.handler(message -> {
+
+      String action = message.body().getString(PERSISTENCE_ACTION);
+
+      switch (action) {
+        case PERSISTENCE_ACTION_REGISTER:
+          registerUser(message);
+          break;
+        default:
+          message.fail(1, "Unkown action: " + message.body());
+      }
+    });
+
+
+  }
+
+  private void registerUser(Message<JsonObject> message) {
+    message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE));
+  }
+}
+
+
+....
+
