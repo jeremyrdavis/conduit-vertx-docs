@@ -61,7 +61,7 @@ Flyway for databse migrations
 
 The 3 tutorials at Thinkster.io all start with the Authentication endpoint.  We will get to that one in the next section.
 
-== Test Driven Development
+== Test First!
 
 Red, Green, Refactor...
 
@@ -74,9 +74,6 @@ We will then build the code to pass the test
 * marshall the JSON into a domain object
 * persist the User posted to our endpoint
 * return the expected JSON User representation
-
-
-== Test First!
 
 Create a new class, RegistrationEndpointTest, in the io.vertx.conduit package
 
@@ -175,6 +172,128 @@ The test shouldn't pass at this point, but it is important to regularly run your
 The test fails of course because we aren't serving anything at "/api/users" 
 
 === Pass the Test
+
+==== Create a Domain Model for User
+
+Create a domain model to represent the Conduit API's user, User in a new package, "io.vertx.conduit.model"
+
+This object is mostly self-explanatory, but there are two things in particular that is unusual: the toJsonObject() method and the constructor that takes a JsonObject
+
+[code,java]
+....
+
+package io.vertx.conduit.model;
+
+import io.vertx.core.json.JsonObject;
+
+public class User {
+
+  String email;
+
+  String token;
+
+  String username;
+
+  String bio;
+
+  String image;
+
+  /**
+   * JsonObject in the format the Conduit API's expect
+    *
+   * @return JsonObject
+   */
+  public JsonObject toJsonObject() {          <1>
+
+    return new JsonObject()
+      .put("user", new JsonObject()
+        .put("email", this.email)
+        .put("token", this.token)
+        .put("username", this.username)
+        .put("bio", this.bio)
+        .put("image", this.image));
+  }
+
+  /**
+   * Constructor that takes a JsonObject representing the User
+   *
+   * @param jsonObject
+   */
+  public User(JsonObject jsonObject) {          <2>
+    this.email = jsonObject.getString("email");
+    this.token = jsonObject.getString("token");
+    this.username = jsonObject.getString("username");
+    this.bio = jsonObject.getString("bio");
+    this.image = jsonObject.getString("image");
+  }
+
+  public User() {
+  }
+
+  public User(String email, String token, String username, String bio, String image) {
+    this.email = email;
+    this.token = token;
+    this.username = username;
+    this.bio = bio;
+    this.image = image;
+  }
+
+  @Override
+  public String toString() {
+    return "User{" +
+      "email='" + email + '\'' +
+      ", token='" + token + '\'' +
+      ", username='" + username + '\'' +
+      ", bio='" + bio + '\'' +
+      ", image='" + image + '\'' +
+      '}';
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
+  }
+
+  public String getToken() {
+    return token;
+  }
+
+  public void setToken(String token) {
+    this.token = token;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public void setBio(String bio) {
+    this.bio = bio;
+  }
+
+  public String getImage() {
+    return image;
+  }
+
+  public void setImage(String image) {
+    this.image = image;
+  }
+}
+
+....
+
+<1>  Vert.x can very smoothly encode Java POJO's, but to match the Conduit API we need to nest the User model in another JsonObject, "user"
+<2>  Vert.x can natively encode and decode Json, but adding this method will make it even easier to marshall our User model to and from Json
 
 ==== Register the Endpoint
 
@@ -310,7 +429,55 @@ public class MainVerticle extends AbstractVerticle {
 
 At this point our test will pass, but it isn't really doing anything.  We need to insert the user into the database.
 
-== Lookuping the User
+== Adding a Database
+
+==== HyperSQL (HSQLDB)
+
+HyperSQL, http://hsqldb.org, is a small relational database that can be store data in-memory or on the file system.  We will use both methods in ths project.
+
+HSQLDB isn't recommended for production systems, but it is an excellent choice for development.
+
+The database dependencies can be found in the pom.xml
+
+[source,xml]
+....
+    <!-- Database Dependencies -->
+    <dependency>
+      <groupId>io.vertx</groupId> 
+      <artifactId>vertx-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>${hsqldb.version}</version>
+    </dependency>
+....
+
+The first step is to add a Vert.x JDBCClient to the MainVerticle as a class variable:
+
+[source,java]
+....
+  import io.vertx.ext.jdbc.JDBCClient;
+  ...
+public class MainVerticle extends AbstractVerticle {
+
+  private JDBCClient jdbcClient;                                   <1>
+
+  @Override
+  public void start(Future<Void> future) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()   <2>
+      .put("url", "jdbc:hsqldb:file:db/wiki")
+      .put("driver_class", "org.hsqldb.jdbcDriver")
+      .put("max_pool_size", 30));
+
+    Router baseRouter = Router.router(vertx);
+    ...
+....
+<1> Create a member variable
+<2> Instantiate the JDBClient py passing in our vertx Object and configuration in the form of a JsonObject
+
+== Looking Up the User
 
 We have the endpoint, but it isn't doing anything at the moment.  In order to actually authenticate users we will need to look them up from a database.  To do that we will need to:
 * create a database

@@ -1,6 +1,8 @@
 package io.vertx.conduit;
 
+import io.vertx.conduit.model.User;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.VertxExtension;
@@ -27,11 +29,9 @@ public class RegistrationEndpointTest {
             .put("password", "jakejake")
           ), response -> testContext.verify(() -> {
           assertEquals(201, response.result().statusCode());
-          JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");
-          System.out.println(user.encodePrettily());
-          assertEquals("jake@jake.jake", user.getString("email"));
-          assertEquals("jakejake", user.getString("password"));
-          assertEquals("Jacob", user.getString("username"));
+          User returnedUser = Json.decodeValue(response.result().bodyAsString(), User.class);
+          assertEquals("jake@jake.jake", returnedUser.getEmail());
+          assertEquals("Jacob", returnedUser.getUsername());
           testContext.completeNow();
         }));
     }));
