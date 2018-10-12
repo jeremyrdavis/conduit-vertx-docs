@@ -7,7 +7,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
 
-public class DatabaseVerticle extends AbstractVerticle {
+public class PersistenceVerticle extends AbstractVerticle {
 
   public static final String PERSISTENCE_ADDRESS = "persistence-address";
   public static final String PERSISTENCE_ACTION = "action";
@@ -35,10 +35,11 @@ public class DatabaseVerticle extends AbstractVerticle {
       }
     });
 
+    startFuture.complete();
 
   }
 
   private void registerUser(Message<JsonObject> message) {
-    message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE));
+    message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
   }
 }

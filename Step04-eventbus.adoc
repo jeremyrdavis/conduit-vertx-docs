@@ -64,7 +64,7 @@ However you are not forced to use JSON if you don’t want to.
 
 == Fail a Test!
 
-Create a new test, DatabaseVerticleTest:
+Create a new test, PersistenceVerticleTest:
 
 [code,java]
 ....
@@ -76,6 +76,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.AfterEach;
@@ -83,51 +84,54 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import io.vertx.conduit.PersistenceVerticle;
 
+import static io.vertx.conduit.PersistenceVerticle.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("Database Event Bus Tests")
+@DisplayName("Persistence Event Bus Tests")
 @ExtendWith(VertxExtension.class)
-public class DatabaseVerticleTest {
-
-  @BeforeEach
-  void setUp(Vertx vertx, VertxTestContext testContext) {
-    Checkpoint deploymentCheckpoint = testContext.checkpoint();
-    vertx.deployVerticle(new DatabaseVerticle(), testContext.succeeding(id -> {
-      assertNotNull(id);
-      deploymentCheckpoint.flag();
-    }));
-  }
-
-  @AfterEach
-  void tearDown(Vertx vertx, VertxTestContext testContext) {
-    vertx.close();
-  }
+public class PersistenceVerticleTest {
 
   @Test
-  @DisplayName("Register User Test")
+  @DisplayName("Register User Test") 
+  @Timeout(2000)          <1>
   void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
 
-    Checkpoint replyCheckpoint = testContext.checkpoint();
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();          <2>
+    Checkpoint replyCheckpoint = testContext.checkpoint();          <3>
 
-    User user = new User("user1@user.com", null, "user1", "user1's bio", null);
+    User user = new User("user1@user.com", null, "user1", "user1's bio", null);          <4>
 
     JsonObject message = new JsonObject()
-      .put(PERSISTENCE_ACTION, "registerUser")          <1>
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)          <5>
       .put("user", Json.encode(user));
 
-    vertx.eventBus().send(PERSISTENCE_ADDRESS, message, ar -> {          <1>
-      assertTrue(ar.succeeded());
-      JsonObject result = (JsonObject) ar.result().body();
-      assertEquals("success", result.getString("outcome"));
-      replyCheckpoint.flag();
-    });
+    vertx.deployVerticle(new PersistenceVerticle(), testContext.succeeding(id -> {          <5>
+      deploymentCheckpoint.flag();          <6>
+      vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {          <7>
+        testContext.verify(() -> {          <8>
+          assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+          replyCheckpoint.flag();          <9>
+          testContext.completeNow();          <10>
+        });
+      }));
+    }));
   }
 
 }
 
 ....
-<1> Trickeration.  We are going to make a publicly available constant in a minute
+<1>  We haven't used the @Timeout annotation yet.  It is a useful addition for reasons that are probably obvious.  In this case we are testing multiple asynchronous actions so a Timeout while working on the test method can save time
+<2>  We create 2 Checkpoint objects.  This one verifies our PersistenceVerticle is deployed successfully
+<3>  This Checkpoint will be used to verify that our reply is received
+<4>  Create a new to persist
+<5>  There are 2 things to note about this line.  First, Json is the message format we are using on the event bus.  Second, our message includes instructions on how to handle the payload.  We are using String contstants to prevent fat finger errors.  We will add these constants into the EventBus Verticle in the next step.
+<6>  Verify deployment
+<7>  Send the message over the EventBus with the testContext.succeeding Handler.  The testContext.succeeding Hanlder automatically checks for the success of the result, and ends the test on failure
+<8>  Now we actually verify the result
+<9>  Flag the reply
+<10> End the test
 
 == Pass the Test (for a moment anyway)
 
@@ -143,7 +147,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
 
-public class DatabaseVerticle extends AbstractVerticle {
+public class PersistenceVerticle extends AbstractVerticle {
 
   public static final String PERSISTENCE_ADDRESS = "persistence-address";
   public static final String PERSISTENCE_ACTION = "action";
