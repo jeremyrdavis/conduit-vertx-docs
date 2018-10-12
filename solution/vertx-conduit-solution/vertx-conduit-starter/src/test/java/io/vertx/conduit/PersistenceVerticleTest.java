@@ -1,6 +1,7 @@
 package io.vertx.conduit;
 
 import io.vertx.conduit.model.User;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -22,6 +23,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(VertxExtension.class)
 public class PersistenceVerticleTest {
 
+  private static final String DB_URL_TEST = "jdbc:hsqldb:mem:testdb;db_close_delay=-1";
+  private static final String DB_DRIVER_TEST = "org.hsqldb.jdbcDriver";
+  private static final String DB_USER_TEST = "sa";
+  private static final Integer DB_POOL_SIZE_TEST = 30;
+
   @Test
   @DisplayName("Register User Test")
   @Timeout(2000)
@@ -36,7 +42,14 @@ public class PersistenceVerticleTest {
       .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)
       .put("user", Json.encode(user));
 
-    vertx.deployVerticle(new PersistenceVerticle(), testContext.succeeding(id -> {
+    JsonObject eventBusDeploymentConfig = new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
+
+
+    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig),testContext.succeeding(id -> {
       deploymentCheckpoint.flag();
       vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
         testContext.verify(() -> {

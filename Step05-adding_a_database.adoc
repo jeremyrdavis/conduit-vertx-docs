@@ -10,45 +10,151 @@ endif::[]
 
 == Summary
 
-Now that we have stubbed out the Authentication endpoint it is time to do some real work.  In this step we will create a database for application and use it to authenticate the user json posted to the endpoint.
+Now that we have stubbed out the Register User methods it is time to do some real work.  In this step we will create a database for application and register a User built from the json posted to the endpoint.
 
 == KeyTerms in this Step
 
 * Flyway database migration tool: https://flywaydb.org
 * HyperSQL http://hsqldb.org/
 
-* io.vertx.ext.auth.AuthProvider
-* io.vertx.ext.auth.jdbc.JDBCAuth
 * io.vertx.ext.jdbc.JDBCClient
 
-== Creating the Database
+=== Flyway
 
-We will use the Flyway Maven plugin to perform our databse migrations.  Flyway has a command line tool and can be executed from Java, but the Maven plugin is simple to use, keeps us from having to install something on our laptops, and is in keeping with the way we are building and testing in this tutorial.  You can run Flyway commands like so:
+Flyway is a databse migration tool.  Programmatic database migrations were introduced by Ruby on Rails. Flyway is a Java application and fits nicely into the Java build ecosystem, but it will feel familiar to anyone who has used Rails before
+
+Flyway has a command line tool, a Java API that can be executed from your application, and a Maven plugin.  We will use the maven plugin and the Java API in our Unit Tests.  You can run Flyway commands like so:
 
 [code,shell]
 ....
+
 mvn flyway:migrate
+
 ....
 
-You can find the Flyway properties on line 17 of the pom.xml and the plugin on line 105.
+NOTE: If for some reason something goes wrong with a Flyway migration you need to run "mvn flyway:repair" before rerunning the migration.  You can also safely delete the enire "db" folder in the root of your project and rerun "mvn flyway:migrate"
 
-The properties contain the HyperSQL configuration:
+The Flyway properties on line 17 of the pom.xml and the plugin on line 105.
 
 [code,xml]
 ....
     <!-- Flyway Database Migrations -->
     <flyway.url>jdbc:hsqldb:file:db/conduit</flyway.url>     <1>
     <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>     <2>
-    <flyway.locations>filesystem:src/main/resources/db/migrations</flyway.locations>     <3>
+    <flyway.locations>filesystem:src/main/resources/db/migration</flyway.locations>     <3>
 ....
 
 <1> The filesystem location of our HyperSQL database
 <2> The JDBC driver
 <3> The location where we will keep our migration scripts
 
-=== Step 1: Create the Database
+=== HyperSQL (HSQLDB)
 
-Create a folder src/main/resources/db/migrations.  Create a new file named "V1_\_create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration.
+HyperSQL, http://hsqldb.org, is a small relational database that can be store data in-memory or on the file system.  We will use both methods in ths project.
+
+HSQLDB isn't recommended for production systems, but it is an excellent choice for development.
+
+The database dependencies can be found in the pom.xml
+
+[source,xml]
+....
+    <!-- Database Dependencies -->
+    <dependency>
+      <groupId>io.vertx</groupId> 
+      <artifactId>vertx-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>${hsqldb.version}</version>
+    </dependency>
+....
+
+== Fail a Test
+
+First things first we need to fail a test
+
+The Flyway section of this document mentioned that we will be using HSQLDB's File System and In-Memory modes.  HSQLDB's in-memory mode gives us the ability to create the database in memory before every test
+
+Let's modify the PersistenceVerticleTest to pass in a different database configuration
+
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.conduit.model.User;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import io.vertx.conduit.PersistenceVerticle;
+
+import static io.vertx.conduit.PersistenceVerticle.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+@DisplayName("Persistence Event Bus Tests")
+@ExtendWith(VertxExtension.class)
+public class PersistenceVerticleTest {
+
+  private static final String DB_URL_TEST = "jdbc:hsqldb:mem:testdb;db_close_delay=-1";
+  private static final String DB_DRIVER_TEST = "org.hsqldb.jdbcDriver";
+  private static final String DB_USER_TEST = "sa";
+  private static final Integer DB_POOL_SIZE_TEST = 30;
+
+  @Test
+  @DisplayName("Register User Test")
+  @Timeout(2000)
+  void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+
+    User user = new User("user1@user.com", null, "user1", "user1's bio", null);
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)
+      .put("user", Json.encode(user));
+
+    JsonObject eventBusDeploymentConfig = new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
+
+
+    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig),testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+      vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
+        testContext.verify(() -> {
+          assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+          replyCheckpoint.flag();
+          testContext.completeNow();
+        });
+      }));
+    }));
+
+
+  }
+
+}
+
+....
+
+== Creating the Database
+
+=== Step 1: flyway:migrate
+
+Create a folder src/main/resources/db/migration.  Create a new file named "V1_\_create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration.
 
 We can craft a "create table" statement using the values in the expected json returned from our endpoint.
 
@@ -60,7 +166,7 @@ The json outlined in the API:
   "user": {
     "email": "jake@jake.jake",
     "token": "jwt.token.here",
-    "username": "jake",
+    "username": "Jacob",
     "bio": "I work at statefarm",
     "image": null
   }
@@ -71,30 +177,30 @@ produces the following table that we can use for authentication
 
 [code,sql]
 ....
-create table if not exists USER (ID INT IDENTITY PRIMARY KEY ,
-  USERNAME VARCHAR(255) NOT NULL ,
-  EMAIL VARCHAR(255) NOT NULL UNIQUE,
-  BIO VARCHAR(255) ,
-  IMAGE VARCHAR(255) ,
-  PASSWORD VARCHAR(255) NOT NULL ,
-  PASSWORD_SALT VARCHAR(255));
+create table if not exists USER ("id" INT IDENTITY PRIMARY KEY ,
+  "username" VARCHAR(255) NOT NULL ,
+  "email" VARCHAR(255) NOT NULL UNIQUE,
+  "bio" VARCHAR(255) ,
+  "image" VARCHAR(255) ,
+  "password" VARCHAR(255) NOT NULL ,
+  "password_salt" VARCHAR(255));
 ....
 
-You might have noticed that there is no Json field, "PASSWORD_SALT."  That column is required by Vert.x Authentication functionality.  We will get to that a bit later.
+You might have noticed that there is no Json field, "password_salt."  That column is required by Vert.x Authentication functionality.  We will get to that a bit later.
 
 Create a second migration file, V1.1_\_insert-user.sql in the same folder.  The insert contents are:
 
 [code,sql]
 ....
 insert into USER (  
-    USERNAME,
-    EMAIL,
-    BIO,
-    IMAGE,
-    PASSWORD,
-    PASSWORD_SALT
+    "username",
+    "email",
+    "bio",
+    "image",
+    "password",
+    "password_salt"
     ) values (
-    'jake',
+    'Jacob',
     'jake@jake.jake',
     'I work at state farm',
     NULL,
@@ -108,13 +214,16 @@ Run the migration:
 
 [code,shell]
 ....
+
 mvn flyway:migrate
+
 ....
 
 You should see something similar to the following:
 
 [code,shell]
 ....
+
 [INFO] --- flyway-maven-plugin:5.1.4:migrate (default-cli) @ vertx-conduit-starter ---
 [INFO] Flyway Community Edition 5.1.4 by Boxfuse
 [INFO] Database: jdbc:hsqldb:file:db/spike (HSQL Database Engine 2.3)
@@ -127,25 +236,97 @@ You should see something similar to the following:
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
+
 ....
 
-This created our user table (and a Flyway table that stores information about the migrations) and inserted the user from the documentation.
+V1_\_create-user-table.sql created our user table, V2_\_insert-user.sql inserted the User from the API docs.  Flyway also created a table that stores information about the migrations
 
-NOTE: If for some reason something goes wrong with a Flyway migration you need to run "mvn flyway:repair" before rerunning the migration.
+== Step 2: Accessing the Database
 
-== Step 2: Access the Database
+=== Vert.x JDBCClient
 
-Add 2 classes to MainVerticle: JDBCAuth and JDBCClient:
+https://vertx.io/docs/vertx-jdbc-client/java/
+
+The Vert.x JDBC Client dependency can be found on line 54 of your pom.xml:
+
+[code,xml]
+....
+
+<dependency>
+  <groupId>io.vertx</groupId>
+  <artifactId>vertx-jdbc-client</artifactId>
+</dependency>
+
+....
+
+Add Vert.x JDBC Client to PersistenceVerticle
 
 [code,java]
 ....
-import io.vertx.ext.auth.jdbc.JDBCAuth;
-import io.vertx.ext.jdbc.JDBCClient;
-...
 
-  private JDBCAuth authProvider;
+package io.vertx.conduit;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.jdbc.JDBCClient;
+
+public class PersistenceVerticle extends AbstractVerticle {
+
+  public static final String PERSISTENCE_ADDRESS = "persistence-address";
+  public static final String PERSISTENCE_ACTION = "action";
+  public static final String PERSISTENCE_ACTION_REGISTER = "register";
+  public static final String PERSISTENCE_OUTCOME = "outcome";
+  public static final String PERSISTENCE_OUTCOME_SUCCESS = "success";
+  public static final String PERSISTENCE_OUTCOME_FAILURE = "failure";
+
+  private static final String DB_URL_KEY_DEFAULT = "jdbc:hsqldb:file:db/conduit;shutdown=true";          <1>
+  private static final String DB_URL_KEY = "url";
+  private static final String DB_DRIVER_KEY = "org.hsqldb.jdbcDriver";
+  private static final String DB_DRIVER_KEY_DEFAULT = "driver_class";
+  private static final String DB_USER_KEY = "user";
+  private static final String DB_USER_KEY_DEFAULT = "sa";
+  private static final String DB_POOL_SIZE_KEY = "max_pool_size";
+  private static final String DB_POOL_SIZE_DEFAULT = "30";
 
   private JDBCClient jdbcClient;
+
+  @Override
+  public void start(Future<Void> startFuture) throws Exception {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put(config().getString(DB_URL_KEY), DB_URL_KEY_DEFAULT)
+      .put(config().getString(DB_DRIVER_KEY), DB_DRIVER_KEY_DEFAULT)
+      .put(config().getString(DB_USER_KEY), DB_USER_KEY_DEFAULT)
+      .put(config().getString(DB_POOL_SIZE_KEY), DB_POOL_SIZE_DEFAULT);
+
+    EventBus eventBus = vertx.eventBus();
+    MessageConsumer<JsonObject> consumer = eventBus.consumer(PERSISTENCE_ADDRESS);
+    consumer.handler(message -> {
+
+      String action = message.body().getString(PERSISTENCE_ACTION);
+
+      switch (action) {
+        case PERSISTENCE_ACTION_REGISTER:
+          registerUser(message);
+          break;
+        default:
+          message.fail(1, "Unkown action: " + message.body());
+      }
+    });
+
+    startFuture.complete();
+
+  }
+
+  private void registerUser(Message<JsonObject> message) {
+    message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE));
+  }
+}
+
 ....
 
 Initialize the classes inside of MainVerticle's start method before the Router is initialized and configured:
@@ -318,28 +499,6 @@ Should produce failing tests.
 = COPY/PASTE from earlier db stuff
 
 == Adding a Database
-
-==== HyperSQL (HSQLDB)
-
-HyperSQL, http://hsqldb.org, is a small relational database that can be store data in-memory or on the file system.  We will use both methods in ths project.
-
-HSQLDB isn't recommended for production systems, but it is an excellent choice for development.
-
-The database dependencies can be found in the pom.xml
-
-[source,xml]
-....
-    <!-- Database Dependencies -->
-    <dependency>
-      <groupId>io.vertx</groupId> 
-      <artifactId>vertx-jdbc-client</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.hsqldb</groupId>
-      <artifactId>hsqldb</artifactId>
-      <version>${hsqldb.version}</version>
-    </dependency>
-....
 
 The first step is to add a Vert.x JDBCClient to the MainVerticle as a class variable:
 

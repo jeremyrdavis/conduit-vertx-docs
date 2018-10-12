@@ -17,9 +17,9 @@
     <!-- Flyway Database Migrations -->
     <flyway.url>jdbc:hsqldb:file:db/conduit</flyway.url>
     <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>
-    <flyway.locations>filesystem:src/main/resources/db/migrations</flyway.locations>
+    <flyway.locations>filesystem:src/main/resources/db/migration</flyway.locations>
     <!-- Version of JUnit5 -->
-    <junit-jupiter.version>5.1.0</junit-jupiter.version>    
+    <junit-jupiter.version>5.1.0</junit-jupiter.version>
   </properties>
 
   <dependencyManagement>
@@ -39,8 +39,8 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
     </dependency>
-    <!-- 
-      Vert.x-Web 
+    <!--
+      Vert.x-Web
       https://vertx.io/docs/vertx-web/java/
     -->
     <dependency>
@@ -60,8 +60,8 @@
       <groupId>io.vertx</groupId> <artifactId>vertx-jdbc-client</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.hsqldb</groupId> 
-      <artifactId>hsqldb</artifactId> 
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
       <version>${hsqldb.version}</version>
     </dependency>
     <!-- Testing Dependencies -->
