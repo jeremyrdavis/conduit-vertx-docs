@@ -426,5 +426,5 @@ public class MainVerticle extends AbstractVerticle {
 <4>  Set the content type 
 <6>  Return the Json
 
-At this point our test will pass, but it isn't really doing anything.  We need to retrieve the user into the database
+At this point our test will pass, but it isn't really doing anything.  We need to retrieve the user from the database.  Next up: retrieving the user from the database via the Event Bus
 
