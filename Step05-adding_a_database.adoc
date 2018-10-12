@@ -1,5 +1,5 @@
 = Step 04 : Adding a Database
-:source-highlighter: coderay
+:source-highlighter: prettify
 ifdef::env-github[]
 :tip-caption: :bulb:
 :note-caption: :information_source:
@@ -314,4 +314,370 @@ mvn clean test
 ....
 
 Should produce failing tests.
+
+= COPY/PASTE from earlier db stuff
+
+== Adding a Database
+
+==== HyperSQL (HSQLDB)
+
+HyperSQL, http://hsqldb.org, is a small relational database that can be store data in-memory or on the file system.  We will use both methods in ths project.
+
+HSQLDB isn't recommended for production systems, but it is an excellent choice for development.
+
+The database dependencies can be found in the pom.xml
+
+[source,xml]
+....
+    <!-- Database Dependencies -->
+    <dependency>
+      <groupId>io.vertx</groupId> 
+      <artifactId>vertx-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>${hsqldb.version}</version>
+    </dependency>
+....
+
+The first step is to add a Vert.x JDBCClient to the MainVerticle as a class variable:
+
+[source,java]
+....
+  import io.vertx.ext.jdbc.JDBCClient;
+  ...
+public class MainVerticle extends AbstractVerticle {
+
+  private JDBCClient jdbcClient;                                   <1>
+
+  @Override
+  public void start(Future<Void> future) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()   <2>
+      .put("url", "jdbc:hsqldb:file:db/wiki")
+      .put("driver_class", "org.hsqldb.jdbcDriver")
+      .put("max_pool_size", 30));
+
+    Router baseRouter = Router.router(vertx);
+    ...
+....
+<1> Create a member variable
+<2> Instantiate the JDBClient py passing in our vertx Object and configuration in the form of a JsonObject
+
+== Looking Up the User
+
+We have the endpoint, but it isn't doing anything at the moment.  In order to actually authenticate users we will need to look them up from a database.  To do that we will need to:
+* create a database
+* prepopulate the database with data
+* connect and lookup our user, "jake@jake.jake"
+
+=== Adding a Database
+
+==== HyperSQL
+HyperSQL, http://hsqldb.org, is a small relational database that can be accessed in-memory data store and on the file system.  It isn't recommended for production systems, but it is an excellent choice for development.
+
+The database dependencies can be found in the pom.xml
+
+[source,xml]
+....
+    <!-- Database Dependencies -->
+    <dependency>
+      <groupId>io.vertx</groupId> 
+      <artifactId>vertx-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>${hsqldb.version}</version>
+    </dependency>
+....
+
+The first step is to add a Vert.x JDBCClient to the MainVerticle as a class variable:
+
+[source,java]
+....
+  import io.vertx.ext.jdbc.JDBCClient;
+  ...
+public class MainVerticle extends AbstractVerticle {
+
+  private JDBCClient jdbcClient;                                   <1>
+
+  @Override
+  public void start(Future<Void> future) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()   <2>
+      .put("url", "jdbc:hsqldb:file:db/wiki")
+      .put("driver_class", "org.hsqldb.jdbcDriver")
+      .put("max_pool_size", 30));
+
+    Router baseRouter = Router.router(vertx);
+    ...
+....
+<1> Create a member variable
+<2> Instantiate the JDBClient py passing in our vertx Object and configuration in the form of a JsonObject
+
+==== AuthProvider
+
+Add a JDBCAuth provider and instantiate it by passing in 
+
+[source,java]
+....
+import io.vertx.ext.auth.jdbc.JDBCAuth;
+
+public class MainVerticle extends AbstractVerticle {
+
+  private JDBCAuth authProvider;
+
+  private JDBCClient jdbcClient;
+
+  @Override
+  public void start(Future<Void> future) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put("url", "jdbc:hsqldb:file:db/wiki")
+      .put("driver_class", "org.hsqldb.jdbcDriver")
+      .put("max_pool_size", 30));
+
+    authProvider = JDBCAuth.create(vertx, jdbcClient);
+....
+
+Instantiate it 
+==== JsonObject
+
+[source,java]
+....
+    JsonObject userLogin = new JsonObject()
+      .put("user", new JsonObject()
+          .put("email", "jake@jake.jake")
+          .put("password", "jakejake")
+      );
+
+    JsonObject expectedReturn = new JsonObject()
+      .put("user", new JsonObject()
+        .put("email", "jake@jake.jake")
+        .put("password", "jakejake")
+        .put("token", "jwt.token.here")
+        .put("username", "jake")
+        .put("bio", "I work at statefarm")
+        .put("image", ""));
+....
+
+==== Test Method
+[source,java]
+....
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+
+      webClient.post(8080, "localhost", "/")
+        .as(BodyCodec.string())
+        .sendJsonObject(userLogin, resp -> {
+          authenticationCheckpoint.flag();
+          assertEquals(200, resp.result().statusCode());
+          assertEquals(expectedReturn, resp.result().bodyAsJsonObject());
+        });
+    }));
+....
+
+=== Run the Test
+
+[source,shell]
+....
+mvn clean test
+...
+[ERROR] Failures:
+[ERROR]   AuthenticationEndpointTest.testSuccessfulAuthentication org.opentest4j.AssertionFailedError: expected: <{"user":{"email":"jake@jake.jake","password":"jakejake","token":"jwt.token.here","username":"jake","bio":"I work at statefarm","image":""}}> but was: <null>
+[INFO]
+[ERROR] Tests run: 2, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+....
+
+== Add the Route and Handler
+
+[source,java]
+....
+    router.route("/api/users/login").handler(this::loginHandler);
+....
+
+== Create our Users domain model
+
+[source,java]
+....
+package io.vertx.thinkster.conduit.domain;
+
+public class User {
+
+  private String email;
+
+  private String token;
+
+  private String username;
+
+  private String bio;
+
+  private String image;
+
+  public User(String email, String token, String username, String bio, String image) {
+    this.email = email;
+    this.token = token;
+    this.username = username;
+    this.bio = bio;
+    this.image = image;
+  }
+
+  @Override
+  public String toString() {
+    return "User{" +
+      "email='" + email + '\'' +
+      ", token='" + token + '\'' +
+      ", username='" + username + '\'' +
+      ", bio='" + bio + '\'' +
+      ", image='" + image + '\'' +
+      '}';
+  }
+
+  public User(String email) {
+    this.email = email;
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
+  }
+
+  public String getToken() {
+    return token;
+  }
+
+  public void setToken(String token) {
+    this.token = token;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getBio() {
+    return bio;
+  }
+
+  public void setBio(String bio) {
+    this.bio = bio;
+  }
+
+  public String getImage() {
+    return image;
+  }
+
+  public void setImage(String image) {
+    this.image = image;
+  }
+}
+
+....
+
+== /api/users/login
+
+Steps
+
+* Create the Users object of our domain model
+* Add a new route
+* Attach a handler to the route
+* Implement the handler
+* Validate the required fields
+* Extract the posted data
+* Lookup the user (we will stub this out for now)
+* Return the expected result
+
+
+Add a new route: 
+
+[code,java]
+....
+    router.route("/api/users/login").handler(this::loginHandler);
+....
+
+Implement loginHandler
+
+[code,java]
+....
+    User user = new User();
+    user.setUsername("vertx-user");
+    user.setBio("Mock bio");
+    user.setEmail("user@vertx.io");
+    user.setToken("token");
+
+    HttpServerResponse response = routingContext.response();
+    response
+      .putHeader("content-type", "text/html")
+      .end(Json.encodePrettily(user));
+....
+
+./redeploy.sh
+
+== Postman and Newman
+update the variables with "localhost:8080/api"
+pass the first Postman test Auth/login
+
+== Handle the actual request values
+
+Create a domain model to handle errors:
+
+[code,java]
+....
+package io.vertx.thinkster.conduit.domain;
+
+public class ConduitError {
+
+  private Error error;
+
+  public ConduitError() {
+
+    this.error = new Error("Something went wrong");
+
+  }
+
+  public ConduitError(String body) {
+
+    this.error = new Error(body);
+  }
+
+  public Error getError() {
+    return error;
+  }
+
+  public void setError(Error error) {
+    this.error = error;
+  }
+
+  private class Error {
+
+    private String body;
+
+    public Error(String body) {
+      this.body = body;
+    }
+
+    public String getBody() {
+      return body;
+    }
+
+    public void setBody(String body) {
+      this.body = body;
+    }
+
+  }
+
+}
+....
 
