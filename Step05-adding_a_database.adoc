@@ -1,0 +1,265 @@
+= Step 05 : Adding an In Memory Database
+:source-highlighter: prettify
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+== Summary
+
+Now that we have stubbed out the Register User methods it is time to do some real work.  In this step we will create a database for application and register a User built from the json posted to the endpoint.
+
+== KeyTerms in this Step
+
+* Flyway database migration tool: https://flywaydb.org
+* HyperSQL http://hsqldb.org/
+
+* io.vertx.ext.jdbc.JDBCClient
+
+=== Flyway
+
+Flyway is a databse migration tool.  Programmatic database migrations were introduced by Ruby on Rails. Flyway is a Java application and fits nicely into the Java build ecosystem, but it will feel familiar to anyone who has used Rails before
+
+Flyway has a command line tool, a Java API that can be executed from your application, and a Maven plugin.  We will use the maven plugin and the Java API in our Unit Tests.  You can run Flyway commands like so:
+
+[code,shell]
+....
+
+mvn flyway:migrate
+
+....
+
+NOTE: If for some reason something goes wrong with a Flyway migration you need to run "mvn flyway:repair" before rerunning the migration.  You can also safely delete the enire "db" folder in the root of your project and rerun "mvn flyway:migrate"
+
+The Flyway properties on line 17 of the pom.xml and the plugin on line 105.
+
+[code,xml]
+....
+    <!-- Flyway Database Migrations -->
+    <flyway.url>jdbc:hsqldb:file:db/conduit</flyway.url>     <1>
+    <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>     <2>
+    <flyway.locations>filesystem:src/main/resources/db/migration</flyway.locations>     <3>
+....
+
+<1> The filesystem location of our HyperSQL database
+<2> The JDBC driver
+<3> The location where we will keep our migration scripts
+
+=== HyperSQL (HSQLDB)
+
+HyperSQL, http://hsqldb.org, is a small relational database that can be store data in-memory or on the file system.  We will use both methods in ths project.
+
+HSQLDB isn't recommended for production systems, but it is an excellent choice for development.
+
+The database dependencies can be found in the pom.xml
+
+[source,xml]
+....
+    <!-- Database Dependencies -->
+    <dependency>
+      <groupId>io.vertx</groupId> 
+      <artifactId>vertx-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>${hsqldb.version}</version>
+    </dependency>
+....
+
+== Fail a Test
+
+First things first we need to fail a test
+
+=== Modify Our Test
+
+The Flyway section of this document mentioned that we will be using HSQLDB's File System and In-Memory modes.  HSQLDB's in-memory mode gives us the ability to create the database in memory before every test
+
+Let's modify the PersistenceVerticleTest to pass in a different database configuration
+
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.conduit.model.User;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import io.vertx.conduit.PersistenceVerticle;
+
+import static io.vertx.conduit.PersistenceVerticle.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+@DisplayName("Persistence Event Bus Tests")
+@ExtendWith(VertxExtension.class)
+public class PersistenceVerticleTest {
+
+  private static final String DB_URL_TEST = "jdbc:hsqldb:mem:testdb;db_close_delay=-1";          <1>
+  private static final String DB_DRIVER_TEST = "org.hsqldb.jdbcDriver";          <1>
+  private static final String DB_USER_TEST = "sa";          <1>
+  private static final Integer DB_POOL_SIZE_TEST = 30;          <1>
+
+  @Test
+  @DisplayName("Register User Test")
+  @Timeout(2000)
+  void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+
+    User user = new User("user1@user.com", null, "user1", "user1's bio", null);
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)
+      .put("user", Json.encode(user));
+
+    JsonObject eventBusDeploymentConfig = new JsonObject()          <2>
+      .put(DB_URL_KEY, DB_URL_TEST)          <3>
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)          <3>
+      .put(DB_USER_KEY, DB_USER_TEST)          <3>
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);          <3>
+
+
+    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig),testContext.succeeding(id -> {          <4>
+      deploymentCheckpoint.flag();
+      vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
+        testContext.verify(() -> {
+          assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+          replyCheckpoint.flag();
+          testContext.completeNow();
+        });
+      }));
+    }));
+
+
+  }
+
+}
+
+....
+
+<1>  Create the JDBC properties to be used for tests as constants
+<2>  Create a JsonObject to store the configuration for the EventBus
+<3>  We haven't created the constants for the keys.  We will add those in the next step as publicly available constants in the PersistenceVerticle class
+<4>  Pass a DeploymentOptions object with our configuration as the second argument to deployVerticle().  The configuration will automatically be read by the Verticle if it is present
+
+=== Modify Our Class Under Test
+
+We need to add the JDBC constants to PersistenceVerticle:
+
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.jdbc.JDBCClient;
+
+public class PersistenceVerticle extends AbstractVerticle {
+
+  public static final String PERSISTENCE_ADDRESS = "persistence-address";          <1>
+  public static final String PERSISTENCE_ACTION = "action";
+  public static final String PERSISTENCE_ACTION_REGISTER = "register";
+  public static final String PERSISTENCE_OUTCOME = "outcome";
+  public static final String PERSISTENCE_OUTCOME_SUCCESS = "success";
+  public static final String PERSISTENCE_OUTCOME_FAILURE = "failure";
+
+  public static final String DB_DRIVER_KEY = "driver_class";          <2>
+  public static final String DB_POOL_SIZE_KEY = "max_pool_size";
+  public static final String DB_URL_KEY = "url";
+  public static final String DB_USER_KEY = "user";
+
+  private static final String DB_DRIVER_DEFAULT = "org.hsqldb.jdbcDriver";          <3>
+  private static final Integer DB_POOL_SIZE_DEFAULT = 30;
+  private static final String DB_URL_DEFAULT = "jdbc:hsqldb:file:db/conduit;shutdown=true";
+  private static final String DB_USER_DEFAULT = "sa";
+
+  private JDBCClient jdbcClient;
+
+  @Override
+  public void start(Future<Void> startFuture) throws Exception {
+
+    System.out.println(config().getString(DB_URL_KEY));
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put(DB_URL_KEY, config().getString(DB_URL_KEY, DB_URL_DEFAULT))          <4>
+      .put(DB_DRIVER_KEY, config().getString(DB_DRIVER_KEY, DB_DRIVER_DEFAULT))
+      .put(DB_USER_KEY, config().getString(DB_USER_KEY, DB_USER_DEFAULT))
+      .put(DB_POOL_SIZE_KEY, config().getInteger(DB_POOL_SIZE_KEY, DB_POOL_SIZE_DEFAULT)));
+
+    EventBus eventBus = vertx.eventBus();
+    MessageConsumer<JsonObject> consumer = eventBus.consumer(PERSISTENCE_ADDRESS);          <5>
+    consumer.handler(message -> {
+
+      String action = message.body().getString(PERSISTENCE_ACTION);          <5>
+
+      switch (action) {
+        case PERSISTENCE_ACTION_REGISTER:          <5>
+          registerUser(message);
+          break;
+        default:
+          message.fail(1, "Unkown action: " + message.body());
+      }
+    });
+
+    startFuture.complete();
+
+  }
+
+  private void registerUser(Message<JsonObject> message) {
+    message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));          <6>
+  }
+}
+
+....
+
+<1>  We might as well move the inline EventBus properties to constants while we are doing this
+<2>  Make the property keys publicly available
+<3>  Create a set of default properties to fall back on
+<4>  The syntax, ".put(DB_URL_KEY, config().getString(DB_URL_KEY, DB_URL_DEFAULT))," gets the corresponding property from the Verticle's configuration or uses the second argument, our "DEFAULT," value if the value is null
+<5>  These values now reference the constants
+<6>  This is sort of cheating, but change the return value so we can find out if the test passed
+
+=== Run the Test
+
+[code,shell]
+....
+
+mvn clean test
+
+....
+
+Your tests should be passing
+
+[code,shell]
+....
+
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+
+....
+
