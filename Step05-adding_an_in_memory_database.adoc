@@ -10,7 +10,7 @@ endif::[]
 
 == Summary
 
-Now that we have stubbed out the Register User methods it is time to do some real work.  In this step we will create a database for application and register a User built from the json posted to the endpoint.
+Now that we have stubbed out the Register User methods it is time to do some real work.  In this step we will create a database for our application and persist a User
 
 == KeyTerms in this Step
 
@@ -23,7 +23,9 @@ Now that we have stubbed out the Register User methods it is time to do some rea
 
 Flyway is a databse migration tool.  Programmatic database migrations were introduced by Ruby on Rails. Flyway is a Java application and fits nicely into the Java build ecosystem, but it will feel familiar to anyone who has used Rails before
 
-Flyway has a command line tool, a Java API that can be executed from your application, and a Maven plugin.  We will use the maven plugin and the Java API in our Unit Tests.  You can run Flyway commands like so:
+Flyway has a command line tool, a Java API that can be executed from your application, and a Maven plugin.  We will use the maven plugin and the Java API in our Unit Tests.  There are only a couple of commands that you have to know to use Flyway
+
+You can run the Flyway Maven commands like this:
 
 [code,shell]
 ....
@@ -32,21 +34,67 @@ mvn flyway:migrate
 
 ....
 
-NOTE: If for some reason something goes wrong with a Flyway migration you need to run "mvn flyway:repair" before rerunning the migration.  You can also safely delete the enire "db" folder in the root of your project and rerun "mvn flyway:migrate"
+The Java API is similarly straightforward:
 
-The Flyway properties on line 17 of the pom.xml and the plugin on line 105.
+[code,java]
+....
+
+    Flyway flyway = Flyway.configure().dataSource(DB_URL_TEST, DB_USER_TEST, null).load();
+    flyway.migrate();
+
+....
+
+NOTE: If for some reason something goes wrong with a Flyway migration you need to run "mvn flyway:repair" before rerunning the migration.  You can also safely delete the enire "db" folder, which will be in the root of your project, and re-run "mvn flyway:migrate"
+
+==== Properties, Dependencies, and Plugin
+
+The Flyway properties on line 18 of the pom.xml, the dependency on line 92, and the plugin on line 115.
+
+===== Properties
 
 [code,xml]
 ....
+
     <!-- Flyway Database Migrations -->
     <flyway.url>jdbc:hsqldb:file:db/conduit</flyway.url>     <1>
     <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>     <2>
     <flyway.locations>filesystem:src/main/resources/db/migration</flyway.locations>     <3>
+
 ....
 
 <1> The filesystem location of our HyperSQL database
 <2> The JDBC driver
-<3> The location where we will keep our migration scripts
+<3> The location where we will keep our migration scripts.  This is the default location for the Java API
+
+===== Dependency
+
+The flyway-core dependency is required to use Flyway in Java classes.  We will be using it to create tables and populate data in memory for use in our Unit Tests
+
+[code,xml]
+....
+
+<dependency>
+  <groupId>org.flywaydb</groupId>
+  <artifactId>flyway-core</artifactId>
+  <version>5.2.0</version>
+</dependency>
+
+....
+
+===== Plugin
+
+The Maven plugin makes it easy to create tables and populate data before running the application
+
+[code,xml]
+....
+
+<plugin>
+  <groupId>org.flywaydb</groupId>
+  <artifactId>flyway-maven-plugin</artifactId>
+  <version>5.1.4</version>
+</plugin>
+        
+....
 
 === HyperSQL (HSQLDB)
 
@@ -54,7 +102,7 @@ HyperSQL, http://hsqldb.org, is a small relational database that can be store da
 
 HSQLDB isn't recommended for production systems, but it is an excellent choice for development.
 
-The database dependencies can be found in the pom.xml
+The database dependencies can be found in the pom.xml on line 64
 
 [source,xml]
 ....
@@ -74,47 +122,99 @@ The database dependencies can be found in the pom.xml
 
 First things first we need to fail a test
 
-=== Modify Our Test
+=== Database Configuration
 
 The Flyway section of this document mentioned that we will be using HSQLDB's File System and In-Memory modes.  HSQLDB's in-memory mode gives us the ability to create the database in memory before every test
 
-Let's modify the PersistenceVerticleTest to pass in a different database configuration
+We will share the database properties across multiple objects so we should keep those in a single location.  Create a new class, "DatabaseProps," in the "io.vertx.conduit.persistence" package:
 
 [code,java]
 ....
 
-package io.vertx.conduit;
+package io.vertx.conduit.persistence;
 
-import io.vertx.conduit.model.User;
-import io.vertx.core.DeploymentOptions;
+public class DatabaseProps {
+
+  protected static final String DB_DRIVER_KEY = "driver_class";
+  protected static final String DB_POOL_SIZE_KEY = "max_pool_size";
+  protected static final String DB_URL_KEY = "url";
+  protected static final String DB_USER_KEY = "user";
+
+  protected static final String DB_DRIVER_DEFAULT = "org.hsqldb.jdbcDriver";
+  protected static final Integer DB_POOL_SIZE_DEFAULT = 30;
+  protected static final String DB_URL_DEFAULT = "jdbc:hsqldb:file:db/conduit;shutdown=true";
+  protected static final String DB_USER_DEFAULT = "sa";
+
+}
+
+....
+
+Let's do the same for test properties and create a class, "TestDatabaseProps," in test directory:
+
+[code,java]
+....
+
+package io.vertx.conduit.persistence;
+
+public class TestDatabaseProps {
+
+  protected static final String DB_URL_TEST = "jdbc:hsqldb:mem:testdb;db_close_delay=-1";
+  protected static final String DB_DRIVER_TEST = "org.hsqldb.jdbcDriver";
+  protected static final String DB_USER_TEST = "sa";
+  protected static final Integer DB_POOL_SIZE_TEST = 30;
+
+}
+
+....
+
+=== Create the Unit Test
+
+Now we can create a Unit Test, PersistenceVerticleTest:
+
+[code,java]
+....
+
+package io.vertx.conduit.persistence;
+
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.junit5.Checkpoint;
+import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import org.junit.jupiter.api.AfterEach;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import io.vertx.conduit.PersistenceVerticle;
 
-import static io.vertx.conduit.PersistenceVerticle.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static io.vertx.conduit.persistence.DatabaseProps.*;          <1>
+import static io.vertx.conduit.persistence.TestDatabaseProps.*;         <2>
 
 @DisplayName("Persistence Event Bus Tests")
 @ExtendWith(VertxExtension.class)
 public class PersistenceVerticleTest {
 
-  private static final String DB_URL_TEST = "jdbc:hsqldb:mem:testdb;db_close_delay=-1";          <1>
-  private static final String DB_DRIVER_TEST = "org.hsqldb.jdbcDriver";          <1>
-  private static final String DB_USER_TEST = "sa";          <1>
-  private static final Integer DB_POOL_SIZE_TEST = 30;          <1>
+  private JDBCClient jdbcClient;         <3>
+
+  @BeforeEach
+  void setUp(Vertx vertx, VertxTestContext testContext) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()         <4>
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST));
+
+    Flyway flyway = Flyway.configure().dataSource(DB_URL_TEST, DB_USER_TEST, null).load();         <5>
+    flyway.migrate();         <6>
+
+    testContext.completeNow();         <7>
+  }
 
   @Test
-  @DisplayName("Register User Test")
+  @DisplayName("Register User Test") 
   @Timeout(2000)
   void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
 
@@ -124,36 +224,129 @@ public class PersistenceVerticleTest {
     User user = new User("user1@user.com", null, "user1", "user1's bio", null);
 
     JsonObject message = new JsonObject()
-      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)         
       .put("user", Json.encode(user));
 
-    JsonObject eventBusDeploymentConfig = new JsonObject()          <2>
-      .put(DB_URL_KEY, DB_URL_TEST)          <3>
-      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)          <3>
-      .put(DB_USER_KEY, DB_USER_TEST)          <3>
-      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);          <3>
-
-
-    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig),testContext.succeeding(id -> {          <4>
-      deploymentCheckpoint.flag();
-      vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
-        testContext.verify(() -> {
+    vertx.deployVerticle(new PersistenceVerticle(), testContext.succeeding(id -> {         
+      deploymentCheckpoint.flag();          
+      vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {          
+        testContext.verify(() -> {          
           assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
-          replyCheckpoint.flag();
-          testContext.completeNow();
+          replyCheckpoint.flag();        
+          testContext.completeNow();        
         });
       }));
     }));
-
-
   }
-
 }
 
 ....
 
-<1>  Create the JDBC properties to be used for tests as constants
-<2>  Create a JsonObject to store the configuration for the EventBus
+<1>  Import the DatabaseProps constants
+<2>  Import the TestDatabaseProps constants
+<3>  We will need a local JDBCClient to query the database and verify the insert worked
+<4>  Instantiate the JDBCClient with the constants in TestDatabaseProps
+<5>  Instantiate our Flyway object with the test properties
+<6>  Perform the database migration creating our user table (we will create the migration in the next step
+<7>  Be sure to let JUnit and the VertxExtension that the @Before method is finished!
+
+IMPORTANT: The Unit Test won't exit without the testContext.completeNow() call.  Keep this in mind if you ever find yourself waiting for your Unit Test to complete
+
+=== Create the Migration
+
+Create a folder src/main/resources/db/migration.  This is the default Flyway location, and there is no compelling reason to change it
+
+Create a new file named "V1_\_create-user-table.sql," in this directory.  Be sure to have 2 underscores between the V1 and the name of the migration
+
+We can craft a "create table" statement using the values from the json outlined in the API.  The Registration endpoint expects a Post request at "/api/users" with the following body:
+
+[code,json]
+....
+
+{
+  "user":{
+    "username": "Jacob",
+    "email": "jake@jake.jake",
+    "password": "jakejake"
+  }
+}
+
+....
+
+Our API defines the following response:
+
+[code,json]
+....
+
+{
+  "user": {
+    "email": "jake@jake.jake",
+    "token": "jwt.token.here",
+    "username": "jake",
+    "bio": "I work at statefarm",
+    "image": null
+  }
+}
+
+....
+
+The combined values produce the following table:
+
+[code,sql]
+....
+
+create table if not exists USER ("id" INT IDENTITY PRIMARY KEY ,
+  "username" VARCHAR(255) NOT NULL ,
+  "email" VARCHAR(255) NOT NULL UNIQUE,
+  "bio" VARCHAR(255) ,
+  "image" VARCHAR(255) ,
+  "password" VARCHAR(255) NOT NULL);
+
+....
+
+Run the test to verify that the migration works:
+
+[code,shell]
+....
+
+mvn clean test -Dtest=PersistenceVerticleTest          <1>
+
+....
+
+<1> The flag "-Dtest=PersistenceVerticleTest" limits execution to only PersistenceVerticleTest
+
+The test will fail, but check the logs for a message about the migration:
+
+[code,shell]
+....
+
+INFO: Migrating schema "PUBLIC" to version 1 - create-user-table
+Oct 13, 2018 6:44:50 AM org.flywaydb.core.internal.command.DbMigrate logSummary
+INFO: Successfully applied 1 migration to schema "PUBLIC" (execution time 00:00.028s)          <1>
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.674 s <<< FAILURE! - in io.vertx.conduit.persistence.NewPersistenceVerticleTest
+[ERROR] testServerRegisterUserOverEventBus{Vertx, VertxTestContext}  Time elapsed: 0.672 s  <<< FAILURE!
+org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
+	at io.vertx.conduit.persistence.NewPersistenceVerticleTest.testServerRegisterUserOverEventBus(NewPersistenceVerticleTest.java:46)
+
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   NewPersistenceVerticleTest.testServerRegisterUserOverEventBus:46 expected: <true> but was: <false>
+[INFO]
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+
+....
+
+<1>  The log, "INFO: Successfully applied 1 migration to schema "PUBLIC" (execution time 00:00.028s)" is what we are looking for
+
+
+
+Create a JsonObject to store the configuration for the EventBus
 <3>  We haven't created the constants for the keys.  We will add those in the next step as publicly available constants in the PersistenceVerticle class
 <4>  Pass a DeploymentOptions object with our configuration as the second argument to deployVerticle().  The configuration will automatically be read by the Verticle if it is present
 
@@ -262,6 +455,12 @@ Your tests should be passing
 [INFO] ------------------------------------------------------------------------
 
 ....
+
+But we aren't actually doing anything.  Let's get some data from HSQLDB
+
+== Add the Vert.x JDBCClient
+
+Add the Vert.x JDBC
 
 == Creating the Database
 
