@@ -1,12 +1,17 @@
 package io.vertx.conduit;
 
+import io.vertx.conduit.model.User;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.UpdateResult;
+
+import static io.vertx.conduit.SQLQueries.SQL_REGISTER_USER;
 
 public class PersistenceVerticle extends AbstractVerticle {
 
@@ -60,6 +65,30 @@ public class PersistenceVerticle extends AbstractVerticle {
   }
 
   private void registerUser(Message<JsonObject> message) {
-    message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
+
+    JsonObject userJson = new JsonObject(message.body().getString("user"));
+    User user = new User(userJson);
+
+    jdbcClient.updateWithParams(SQL_REGISTER_USER, new JsonArray()
+      .add(user.getUsername())
+      .add(user.getEmail())
+      .add(user.getBio())
+      .add(user.getPassword())
+      , res -> {
+      if (res.succeeded()) {
+        UpdateResult updateResult = res.result();
+        System.out.println("No. of rows updated: " + updateResult.getUpdated());
+        if (updateResult.getUpdated() >= 1) {
+          message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
+        }else{
+          message.fail(1, "Error: " + res.cause().getMessage());
+//          message.fail(FailureCodes.DB_ERROR.ordinal(), FailureCodes.DB_ERROR.failureCodeMessage + res.cause().getMessage());
+        }
+      } else {
+        message.fail(1, "Error: " + res.cause().getMessage());
+//        message.fail(FailureCodes.DB_ERROR.ordinal(), FailureCodes.DB_ERROR.failureCodeMessage + res.cause().getMessage());
+      }
+
+    });
   }
 }

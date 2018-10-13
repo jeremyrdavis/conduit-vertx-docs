@@ -39,7 +39,7 @@ public class MainVerticle extends AbstractVerticle {
 
     JsonObject user = routingContext.getBodyAsJson().getJsonObject("user");
 
-    User returnValue = new User("jake@jake.jake", null, "Jacob", "I work at state farm", null);
+    User returnValue = new User("jake@jake.jake", "", "Jacob", "I work at state farm", "", "password");
 
     routingContext.response()
       .setStatusCode(201)

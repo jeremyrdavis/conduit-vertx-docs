@@ -8,6 +8,19 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
+== Summary
+
+We are using HSQLDB in memory to 
+
+== KeyTerms in this Step
+
+* Flyway database migration tool: https://flywaydb.org
+* HyperSQL http://hsqldb.org/
+
+* io.vertx.ext.jdbc.JDBCClient
+
+=== Flyway
+
 == Creating the Database
 
 === Step 1: flyway:migrate

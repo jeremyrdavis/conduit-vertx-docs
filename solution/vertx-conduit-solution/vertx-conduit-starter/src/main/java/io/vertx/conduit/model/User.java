@@ -14,6 +14,10 @@ public class User {
 
   String image;
 
+  String password;
+
+  String password_salt;
+
   public JsonObject toJsonObject() {
 
     return new JsonObject()
@@ -36,18 +40,20 @@ public class User {
     this.username = jsonObject.getString("username");
     this.bio = jsonObject.getString("bio");
     this.image = jsonObject.getString("image");
+    this.password = jsonObject.getString("password");
   }
 
 
   public User() {
   }
 
-  public User(String email, String token, String username, String bio, String image) {
+  public User(String email, String token, String username, String bio, String image, String password) {
     this.email = email;
     this.token = token;
     this.username = username;
     this.bio = bio;
     this.image = image;
+    this.password = password;
   }
 
   @Override
@@ -99,5 +105,21 @@ public class User {
 
   public void setImage(String image) {
     this.image = image;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public String getPassword_salt() {
+    return password_salt;
+  }
+
+  public void setPassword_salt(String password_salt) {
+    this.password_salt = password_salt;
   }
 }

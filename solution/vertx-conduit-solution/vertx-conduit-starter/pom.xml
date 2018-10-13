@@ -18,6 +18,7 @@
     <flyway.url>jdbc:hsqldb:file:db/conduit</flyway.url>
     <flyway.driver>org.hsqldb.jdbcDriver</flyway.driver>
     <flyway.locations>filesystem:src/main/resources/db/migration</flyway.locations>
+    <flyway.version>5.2.0</flyway.version>
     <!-- Version of JUnit5 -->
     <junit-jupiter.version>5.1.0</junit-jupiter.version>
   </properties>
@@ -86,6 +87,12 @@
       <artifactId>junit-jupiter-params</artifactId>
       <version>${junit-jupiter.version}</version>
       <scope>test</scope>
+    </dependency>
+    <!-- Flyway Core utilities for using in Unit Tests -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+      <version>5.2.0</version>
     </dependency>
   </dependencies>
 
