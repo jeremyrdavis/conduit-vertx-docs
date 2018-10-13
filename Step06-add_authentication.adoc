@@ -1,4 +1,4 @@
-= Step06: Authenticatng User Logins
+= Step06: Authenticating User Logins
 :source-highlighter: prettify
 ifdef::env-github[]
 :tip-caption: :bulb:
