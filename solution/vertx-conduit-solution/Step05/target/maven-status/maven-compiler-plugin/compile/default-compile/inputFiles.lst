@@ -1,0 +1,6 @@
+/Users/jeremydavis/Workspace/codeone/vertx-conduit-docs/solution/vertx-conduit-solution/vertx-conduit-starter/src/main/java/io/vertx/conduit/model/User.java
+/Users/jeremydavis/Workspace/codeone/vertx-conduit-docs/solution/vertx-conduit-solution/vertx-conduit-starter/src/main/java/io/vertx/conduit/persistence/PersistenceErrorCodes.java
+/Users/jeremydavis/Workspace/codeone/vertx-conduit-docs/solution/vertx-conduit-solution/vertx-conduit-starter/src/main/java/io/vertx/conduit/persistence/DatabaseProps.java
+/Users/jeremydavis/Workspace/codeone/vertx-conduit-docs/solution/vertx-conduit-solution/vertx-conduit-starter/src/main/java/io/vertx/conduit/persistence/SQLQueries.java
+/Users/jeremydavis/Workspace/codeone/vertx-conduit-docs/solution/vertx-conduit-solution/vertx-conduit-starter/src/main/java/io/vertx/conduit/MainVerticle.java
+/Users/jeremydavis/Workspace/codeone/vertx-conduit-docs/solution/vertx-conduit-solution/vertx-conduit-starter/src/main/java/io/vertx/conduit/persistence/PersistenceVerticle.java

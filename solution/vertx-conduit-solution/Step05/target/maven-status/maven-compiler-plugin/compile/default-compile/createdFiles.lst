@@ -1,0 +1,6 @@
+io/vertx/conduit/persistence/PersistenceErrorCodes.class
+io/vertx/conduit/MainVerticle.class
+io/vertx/conduit/persistence/SQLQueries.class
+io/vertx/conduit/persistence/PersistenceVerticle.class
+io/vertx/conduit/model/User.class
+io/vertx/conduit/persistence/DatabaseProps.class
