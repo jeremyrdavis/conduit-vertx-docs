@@ -418,7 +418,33 @@ insert into USER (
 <1>  You will have to trust me on the hashed password for the moment
 <2>  Same
 
+==== Run the Test
 
+Run the test case
+
+[code,shell]
+....
+
+mvn clean test -Dtest=PersistenceVerticleTest#testJDBCAuthorizationOverEventBus
+
+....
+
+Expect success
+
+[code,shell]
+....
+
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.975 s - in io.vertx.conduit.persistence.PersistenceVerticleTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+
+....
 
 //================================================================
 === A Bit About the Authentication Endpoint
