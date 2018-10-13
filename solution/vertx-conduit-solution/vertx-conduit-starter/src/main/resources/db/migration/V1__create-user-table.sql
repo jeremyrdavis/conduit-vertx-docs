@@ -3,4 +3,5 @@ create table if not exists USER ("id" INT IDENTITY PRIMARY KEY ,
   "email" VARCHAR(255) NOT NULL UNIQUE,
   "bio" VARCHAR(255) ,
   "image" VARCHAR(255) ,
-  "password" VARCHAR(255) NOT NULL);
+  "password" VARCHAR(255) NOT NULL,
+  "password_salt" VARCHAR(255) NOT NULL);

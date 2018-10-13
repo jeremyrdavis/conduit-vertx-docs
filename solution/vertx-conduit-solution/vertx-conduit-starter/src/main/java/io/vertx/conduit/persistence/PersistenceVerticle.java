@@ -8,22 +8,23 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.jdbc.JDBCAuth;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 
+import static io.vertx.conduit.ApplicationProps.*;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_LOGIN_QUERY;
 import static io.vertx.conduit.persistence.SQLQueries.SQL_REGISTER_USER;
 import static io.vertx.conduit.persistence.DatabaseProps.*;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
 
 public class PersistenceVerticle extends AbstractVerticle {
 
-  public static final String PERSISTENCE_ADDRESS = "persistence-address";
-  public static final String PERSISTENCE_ACTION = "action";
-  public static final String PERSISTENCE_ACTION_REGISTER = "register";
-  public static final String PERSISTENCE_OUTCOME = "outcome";
-  public static final String PERSISTENCE_OUTCOME_SUCCESS = "success";
-  public static final String PERSISTENCE_OUTCOME_FAILURE = "failure";
-
   private JDBCClient jdbcClient;
+
+  private JDBCAuth authProvider;
+
 
   @Override
   public void start(Future<Void> startFuture) throws Exception {
@@ -36,15 +37,23 @@ public class PersistenceVerticle extends AbstractVerticle {
       .put(DB_USER_KEY, config().getString(DB_USER_KEY, DB_USER_DEFAULT))
       .put(DB_POOL_SIZE_KEY, config().getInteger(DB_POOL_SIZE_KEY, DB_POOL_SIZE_DEFAULT)));
 
+    authProvider = JDBCAuth.create(vertx, jdbcClient);
+    authProvider.setAuthenticationQuery(SQL_LOGIN_QUERY);
+
+
     EventBus eventBus = vertx.eventBus();
     MessageConsumer<JsonObject> consumer = eventBus.consumer(PERSISTENCE_ADDRESS);
     consumer.handler(message -> {
 
       String action = message.body().getString(PERSISTENCE_ACTION);
+      System.out.println(action);
 
       switch (action) {
         case PERSISTENCE_ACTION_REGISTER:
           registerUser(message);
+          break;
+        case PERSISTENCE_ACTION_LOGIN:
+          loginUser(message);
           break;
         default:
           message.fail(1, "Unkown action: " + message.body());
@@ -54,6 +63,52 @@ public class PersistenceVerticle extends AbstractVerticle {
     startFuture.complete();
 
   }
+
+  private void loginUser(Message<JsonObject> message) {
+
+    JsonObject userJson = new JsonObject(message.body().getString("user"));
+
+    JsonObject authInfo = new JsonObject()
+      .put("username", userJson.getString("email"))
+      .put("password", userJson.getString("password"));
+
+    authProvider.authenticate(authInfo, ar -> {
+
+      if (ar.failed()) {
+        message.reply(
+          new JsonObject()
+            .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE)
+            .put(PERSISTENCE_OUTCOME_MESSAGE, ar.cause()));
+      }else{
+        jdbcClient.queryWithParams(
+          SQL_SELECT_USER_BY_EMAIL,
+          new JsonArray().add(userJson.getString("email")),
+          res -> {
+            if (res.failed()) {
+              message.reply(
+                new JsonObject()
+                  .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE)
+                  .put(PERSISTENCE_OUTCOME_MESSAGE, res.cause()));
+            }else{
+              ResultSet resultSet = res.result();
+              if (resultSet.getNumRows() == 0) {
+                message.reply(
+                  new JsonObject()
+                    .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE)
+                    .put(PERSISTENCE_OUTCOME_MESSAGE, PersistenceErrorCodes.NOT_FOUND.message));
+              }else{
+                JsonArray rs = resultSet.getResults().get(0);
+                message.reply(
+                  new JsonObject()
+                    .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
+              }
+            }
+          });
+      }
+
+    });
+  }
+
 
   private void registerUser(Message<JsonObject> message) {
 
@@ -80,4 +135,5 @@ public class PersistenceVerticle extends AbstractVerticle {
 
     });
   }
+
 }

@@ -19,10 +19,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import static io.vertx.conduit.persistence.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
+import static io.vertx.conduit.ApplicationProps.*;
+import static io.vertx.conduit.TestProps.*;
 import static io.vertx.conduit.persistence.DatabaseProps.*;
-import static io.vertx.conduit.persistence.PersistenceVerticle.*;
-import static io.vertx.conduit.persistence.TestProps.*;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
 
 @DisplayName("Persistence Event Bus Tests")
 @ExtendWith(VertxExtension.class)
@@ -44,7 +44,43 @@ public class PersistenceVerticleTest {
     // Run the migration
     flyway.migrate();
 
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+
+    JsonObject eventBusDeploymentConfig = new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
+
+    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig),testContext.succeeding(id -> {
+        deploymentCheckpoint.flag();
+        Assertions.assertFalse(id.isEmpty());
+    }));
+
     testContext.completeNow();
+  }
+
+  @Test
+  @DisplayName("Authenticate User Test")
+  @Timeout(10000)
+  void testJDBCAuthorizationOverEventBus(Vertx vertx, VertxTestContext testContext) {
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+
+    User user = new User("jake@jake.jake", "password");
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_LOGIN)
+      .put("user", Json.encode(user));
+
+    vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
+      testContext.verify(() -> {
+        System.out.println(ar.body());
+        Assertions.assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+        replyCheckpoint.flag();
+        testContext.completeNow();
+      });
+
+    }));
   }
 
   @Test
@@ -52,7 +88,6 @@ public class PersistenceVerticleTest {
   @Timeout(10000)
   void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
 
-    Checkpoint deploymentCheckpoint = testContext.checkpoint();
     Checkpoint replyCheckpoint = testContext.checkpoint();
 
     User user = new User("user1@user.com", null, "user1", "user1's bio", null, "password");
@@ -68,8 +103,6 @@ public class PersistenceVerticleTest {
       .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
 
 
-    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig),testContext.succeeding(id -> {
-      deploymentCheckpoint.flag();
       vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
         testContext.verify(() -> {
           System.out.println(ar.body());
@@ -97,7 +130,6 @@ public class PersistenceVerticleTest {
           testContext.completeNow();
         });
       }));
-    }));
   }
 
 }

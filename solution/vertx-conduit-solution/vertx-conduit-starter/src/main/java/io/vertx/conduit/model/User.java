@@ -47,6 +47,11 @@ public class User {
   public User() {
   }
 
+  public User(String email, String password){
+    this.email = email;
+    this.password = password;
+  }
+
   public User(String email, String token, String username, String bio, String image, String password) {
     this.email = email;
     this.token = token;
