@@ -72,10 +72,10 @@ public class PersistenceVerticle extends AbstractVerticle {
         if (updateResult.getUpdated() >= 1) {
           message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
         }else{
-          message.fail(1, "Error: " + res.cause().getMessage());
+          message.fail(PersistenceErrorCodes.DB_INSERT_FAILURE.ordinal(), PersistenceErrorCodes.DB_INSERT_FAILURE  + res.cause().getMessage());
         }
       } else {
-        message.fail(1, "Error: " + res.cause().getMessage());
+        message.fail(PersistenceErrorCodes.DB_CONNECTION_ERROR.ordinal(), PersistenceErrorCodes.DB_CONNECTION_ERROR + res.cause().getMessage());
       }
 
     });
