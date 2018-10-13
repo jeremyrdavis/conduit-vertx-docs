@@ -73,11 +73,9 @@ public class PersistenceVerticle extends AbstractVerticle {
           message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
         }else{
           message.fail(1, "Error: " + res.cause().getMessage());
-//          message.fail(FailureCodes.DB_ERROR.ordinal(), FailureCodes.DB_ERROR.failureCodeMessage + res.cause().getMessage());
         }
       } else {
         message.fail(1, "Error: " + res.cause().getMessage());
-//        message.fail(FailureCodes.DB_ERROR.ordinal(), FailureCodes.DB_ERROR.failureCodeMessage + res.cause().getMessage());
       }
 
     });
