@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@DisplayName("Authentication Endpoint Tests")
+@DisplayName("Registration Endpoint Tests")
 @ExtendWith(VertxExtension.class)
 public class RegistrationEndpointTest {
 

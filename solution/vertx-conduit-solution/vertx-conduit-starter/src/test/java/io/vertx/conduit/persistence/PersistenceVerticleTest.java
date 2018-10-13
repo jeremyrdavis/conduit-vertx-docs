@@ -22,7 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static io.vertx.conduit.persistence.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
 import static io.vertx.conduit.persistence.DatabaseProps.*;
 import static io.vertx.conduit.persistence.PersistenceVerticle.*;
-import static io.vertx.conduit.persistence.TestDatabaseProps.*;
+import static io.vertx.conduit.persistence.TestProps.*;
 
 @DisplayName("Persistence Event Bus Tests")
 @ExtendWith(VertxExtension.class)

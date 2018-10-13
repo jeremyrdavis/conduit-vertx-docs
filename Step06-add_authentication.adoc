@@ -1,11 +1,19 @@
 = Step04: Authentication
-:source-highlighter: coderay
+:source-highlighter: prettify
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 == Summary
 
 The second endpoint that we implement will be the Authentication endpoint (see next section.)  There are 2 reasons for this:
-1. Since most of the endpoints require authentication it is a reasonable place to start
-2. The 3 tutorials at Thinkster.io all start with the Authentication endpoint, and we are doing our best to follow along
+
+* Many of the endpoints require authentication so we might as well knock it out sooner rather than later
+* The 3 tutorials at Thinkster.io all start with the Authentication endpoint, and we are doing our best to follow along as much as possible
 
 Our first step will be to create a test (of course) and stub out the respone.
 Our second step will be to add a databse 
@@ -17,11 +25,12 @@ We will then build the code to pass the test
 
 == KeyTerms in this Step
 
-JsonObject
 
+== Fail a Test
 
-== Authentication (Login) Endpoint
-The first endpoint we will implement is the Authentication endpoint, documented here:
+=== A Bit About the Authentication Endpoint
+
+The endpoint we will implement in this step the Authentication endpoint, documented here:
 https://github.com/gothinkster/realworld/blob/master/api/README.md
 
 POST /api/users/login
@@ -49,22 +58,61 @@ Expected Return:
     "image": null
   }
 }
+
 ....
 
 
 == Test First!
 
-Create a new class, AuthenticationEndpointTest, in the io.vertx.conduit package.  Annotate the class with:
+Create a new class, AuthenticationEndpointTests
 
+src/test/java/io/vertx/conduit/AuthenticationEndpointTests
 [source,java]
 ....
+
+package io.vertx.conduit;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DisplayName("Authentication Endpoint Tests")
 @ExtendWith(VertxExtension.class)
 public class AuthenticationEndpointTest {
+
+  @Test
+  public void testAuthentication(Vertx vertx, VertxTestContext testContext){
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      WebClient webClient = WebClient.create(vertx);
+      webClient.post(8080, "localhost", "/api/users/login")
+        .sendJsonObject(new JsonObject()
+        .put("user", new JsonObject()
+          .put("email", "jake@jake.jake")
+          .put("password", "jakejake")
+        ), response -> testContext.verify(() -> {
+        assertEquals(200, response.result().statusCode());
+        JsonObject user = response.result().bodyAsJsonObject().getJsonObject("user");
+        System.out.println(user.encodePrettily());
+        assertEquals("jake@jake.jake", user.getString("email"));
+        assertEquals("jakejake", user.getString("password"));
+        assertNotNull( user.getString("token"));
+        assertEquals("jake", user.getString("username"));
+        assertEquals("I work at statefarm", user.getString("bio"));
+        assertEquals("", user.getString("image"));
+        testContext.completeNow();
+      }));
+    }));
+  }
+}
+
 ....
 
 === Implement the Test Method
