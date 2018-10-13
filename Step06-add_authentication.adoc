@@ -1,4 +1,4 @@
-= Step04: Authenticatng User Logins
+= Step06: Authenticatng User Logins
 :source-highlighter: prettify
 ifdef::env-github[]
 :tip-caption: :bulb:
@@ -25,9 +25,9 @@ We will then build the code to pass the test
 
 == KeyTerms in this Step
 
-Vert.x Authentication
-AuthProvider
-JDBCAuth
+* Vert.x Authentication
+* AuthProvider
+* JDBCAuth
 
 === Vert.x Authentication
 
