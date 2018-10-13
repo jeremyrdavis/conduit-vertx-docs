@@ -169,7 +169,26 @@ public class TestDatabaseProps {
 
 ....
 
-=== Create the Unit Test
+=== And Queries
+
+We will externalize the queries as well.  Create a file SQLQueries in the persistence package:
+
+src/main/java/io/vertx/conduit/persistence/SQLQueries.java
+[code,java]
+....
+
+package io.vertx.conduit.persistence;
+
+public class SQLQueries {
+
+  public static final String SQL_REGISTER_USER = "insert into USER (\"username\",\"email\",\"bio\",\"password\") values (?, ?, ?, ?);";
+  public static final String SQL_SELECT_USER_BY_EMAIL = "select * from USER where \"email\" = ?";
+
+}
+
+....
+
+=== Update the Unit Test
 
 Now we can update PersistenceVerticleTest:
 
@@ -202,18 +221,18 @@ public class PersistenceVerticleTest {
   private JDBCClient jdbcClient;         <3>
 
   @BeforeEach
-  void setUp(Vertx vertx, VertxTestContext testContext) {
+  void setUp(Vertx vertx, VertxTestContext testContext) {          <4>
 
-    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()         <4>
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()         <5>
       .put(DB_URL_KEY, DB_URL_TEST)
       .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
       .put(DB_USER_KEY, DB_USER_TEST)
       .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST));
 
-    Flyway flyway = Flyway.configure().dataSource(DB_URL_TEST, DB_USER_TEST, null).load();         <5>
-    flyway.migrate();         <6>
+    Flyway flyway = Flyway.configure().dataSource(DB_URL_TEST, DB_USER_TEST, null).load();         <6>
+    flyway.migrate();         <7>
 
-    testContext.completeNow();         <7>
+    testContext.completeNow();         <8>
   }
 
   @Test
@@ -248,10 +267,11 @@ public class PersistenceVerticleTest {
 <1>  Import the DatabaseProps constants
 <2>  Import the TestDatabaseProps constants
 <3>  We will need a local JDBCClient to query the database and verify the insert worked
-<4>  Instantiate the JDBCClient with the constants in TestDatabaseProps
-<5>  Instantiate our Flyway object with the test properties
-<6>  Perform the database migration creating our user table (we will create the migration in the next step
-<7>  Be sure to let JUnit and the VertxExtension that the @Before method is finished!
+<4>  We have added a @BeforeEach method that will run before each test and run the database migrations  
+<5>  Instantiate the JDBCClient with the constants in TestDatabaseProps
+<6>  Instantiate our Flyway object with the test properties
+<7>  Perform the database migration creating our user table (we will create the migration in the next step
+<8>  Be sure to let JUnit and the VertxExtension that the @Before method is finished!
 
 IMPORTANT: The Unit Test won't exit without the testContext.completeNow() call.  Keep this in mind if you ever find yourself waiting for your Unit Test to complete
 
@@ -349,16 +369,142 @@ org.opentest4j.AssertionFailedError: expected: <true> but was: <false>
 
 <1>  The log, "INFO: Successfully applied 1 migration to schema "PUBLIC" (execution time 00:00.028s)" is what we are looking for
 
+=== Verify the Insert
+
+There is one last step: we need to verify that our user was saved to the database.  Add the following code to PersistenceVerticleTest:
+
+src/main/test/io/vertx/conduit/persistence/PersistenceVerticleTest
+[code,java]
+....
+
+package io.vertx.conduit.persistence;
+
+import io.vertx.conduit.model.User;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import static io.vertx.conduit.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
+import static io.vertx.conduit.persistence.DatabaseProps.*;
+import static io.vertx.conduit.persistence.PersistenceVerticle.*;
+import static io.vertx.conduit.persistence.TestDatabaseProps.*;
+
+@DisplayName("Persistence Event Bus Tests")
+@ExtendWith(VertxExtension.class)
+public class PersistenceVerticleTest {
+
+  private JDBCClient jdbcClient;
 
 
-Create a JsonObject to store the configuration for the EventBus
-<3>  We haven't created the constants for the keys.  We will add those in the next step as publicly available constants in the PersistenceVerticle class
+  @BeforeEach
+  void setUp(Vertx vertx, VertxTestContext testContext) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST));
+
+    Flyway flyway = Flyway.configure().dataSource(DB_URL_TEST, DB_USER_TEST, null).load();
+    // Run the migration
+    flyway.migrate();
+
+    testContext.completeNow();
+  }
+
+  @Test
+  @DisplayName("Register User Test")
+  @Timeout(10000)
+  void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+
+    User user = new User("user1@user.com", null, "user1", "user1's bio", null, "password");
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)
+      .put("user", Json.encode(user));
+
+    JsonObject eventBusDeploymentConfig = new JsonObject()          <1>
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
+
+
+    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig          <2>(eventBusDeploymentConfig),testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+      vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
+        testContext.verify(() -> {
+    
+          // query database to verify insert
+          jdbcClient.getConnection(conn ->{          <3>
+            if (conn.failed()) {
+              Assertions.assertTrue(conn.succeeded());          <4>
+              testContext.completeNow();          <5>
+            }
+            final SQLConnection connection = conn.result();          <6>
+
+            connection.queryWithParams(SQL_SELECT_USER_BY_EMAIL,          <7> 
+               new JsonArray().add(user.getEmail()),          <8> 
+               rs -> {
+                if (rs.failed()) {
+                  Assertions.assertTrue(rs.succeeded());          <9>
+                  testContext.completeNow();          <10>
+                }
+                Assertions.assertEquals(1, rs.result().getNumRows());          <11>
+                System.out.println(rs.result().getResults().get(0).encode());
+              });
+            });
+
+          Assertions.assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+          replyCheckpoint.flag();
+          testContext.completeNow();
+        });
+      }));
+    }));
+  }
+
+}
+
+....
+
+<1>  Create a JsonObject to pass the configuration for the EventBus
+<2>  Add the configuration as the second parameter when deploying the PersistenceVerticle
+<3>  Use the jdbcClient to get a database connection
+<4>  If we can't get a connection we can fail the test
+<5>  Be sure to let the VertxExtension know we are done!
+<6>  The SQLConnection is the result of getConnection
+<7>  Use SQLConnection's queryWithParams method to retrieve our new User by email.  
+<8>  The queryWithParams method gets the parameters to use in the query from a JsonArray.  Add the User's email to a new JsonArray
+<9>  If there are no results we can fail the test
+<10>  Be sure to let the VertxExtension know we are done!
+<11>  Verify that we have a single result
+
+
+We haven't created the constants for the keys.  We will add those in the next step as publicly available constants in the PersistenceVerticle class
 <4>  Pass a DeploymentOptions object with our configuration as the second argument to deployVerticle().  The configuration will automatically be read by the Verticle if it is present
 
 === Modify Our Class Under Test
 
 We need to add the JDBC constants to PersistenceVerticle:
 
+src/main/java/io/vertx/conduit/persistence/PersistenceVerticle.java
 [code,java]
 ....
 
