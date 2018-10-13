@@ -72,6 +72,13 @@ public class PersistenceVerticle extends AbstractVerticle {
       .put("username", userJson.getString("email"))
       .put("password", userJson.getString("password"));
 
+    String salt = authProvider.generateSalt();
+    String saltedPassword = authProvider.computeHash("jakejake", salt);
+
+    System.out.println(salt);
+    System.out.println(saltedPassword);
+
+
     authProvider.authenticate(authInfo, ar -> {
 
       if (ar.failed()) {

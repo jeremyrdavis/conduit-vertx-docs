@@ -66,7 +66,7 @@ public class PersistenceVerticleTest {
   void testJDBCAuthorizationOverEventBus(Vertx vertx, VertxTestContext testContext) {
     Checkpoint replyCheckpoint = testContext.checkpoint();
 
-    User user = new User("jake@jake.jake", "password");
+    User user = new User("jake@jake.jake", "jakejake");
 
     JsonObject message = new JsonObject()
       .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_LOGIN)

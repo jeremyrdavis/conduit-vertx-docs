@@ -369,6 +369,8 @@ There's no need to run the test yet.  Vert.x JDBCAuth is going to query 2 databa
 
 The default JDBC AuthProvider implementation assumes that the password is stored in the database as a SHA-512 hash after being concatenated with a salt. It also assumes the salt is stored in the table too
 
+==== Create the User Table
+
 Open V1_\_create-user-table.sql and update it with the following additional column:
 
 src/main/java/resources/db/migration/V1_\_create-user-table.sql
@@ -389,27 +391,33 @@ create table if not exists USER ("id" INT IDENTITY PRIMARY KEY ,
 
 NOTE: Clever readers may be wondering when the password gets hashed because our registration code doesn't do that (yet.)  We will update the Register User functionality shortly
 
+==== Insert a User for Authentication
+
 We are also going to need some seed data in order to run our test.  Create a new migration, V1.1_\_insert-jacob.sql with the following insert statement:
 
 [code,sql]
 ....
 
 insert into USER (
-    USERNAME,
-    EMAIL,
-    BIO,
-    IMAGE,
-    PASSWORD,
-    PASSWORD_SALT
+    "username",
+    "email",
+    "bio",
+    "image",
+    "password",
+    "password_salt"
     ) values (
     'jake',
     'jake@jake.jake',
     'I work at state farm',
     NULL,
-    '39DF2CF3B01EA60EF66DE648CE6CE0B5AD3F99DC2E1816F79186741E9A0444C58B17580D8F9D48C0FB033606A8C515DA7C5B6C792B710ECCB9FEF1429D51E3CE',
-    'BFB49A9B9CDDDF7C488CB2D84E8DDED8EEC01FFDD26B487DC08E5A4CAB6E4D10');
+    '39DF2CF3B01EA60EF66DE648CE6CE0B5AD3F99DC2E1816F79186741E9A0444C58B17580D8F9D48C0FB033606A8C515DA7C5B6C792B710ECCB9FEF1429D51E3CE',          <1>
+    'BFB49A9B9CDDDF7C488CB2D84E8DDED8EEC01FFDD26B487DC08E5A4CAB6E4D10');          <2>
 
 ....
+
+<1>  You will have to trust me on the hashed password for the moment
+<2>  Same
+
 
 
 //================================================================
