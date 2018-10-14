@@ -1,0 +1,6 @@
+io/vertx/conduit/TestProps.class
+io/vertx/conduit/DemoTest.class
+io/vertx/conduit/persistence/PersistenceVerticleTest.class
+io/vertx/conduit/AuthenticationEndpointTest.class
+io/vertx/conduit/RegistrationEndpointTest.class
+io/vertx/conduit/MainVerticleTest.class

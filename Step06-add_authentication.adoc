@@ -446,3 +446,396 @@ Expect success
 
 ....
 
+== Update Register User
+
+Our test checking if we can authorize Users over the EventBus is passing, but our other persistence test should fail
+
+[code,shell]
+....
+
+[ERROR] Tests run: 2, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.982 s <<< FAILURE! - in io.vertx.conduit.persistence.PersistenceVerticleTest
+[ERROR] testServerRegisterUserOverEventBus{Vertx, VertxTestContext}  Time elapsed: 0.054 s  <<< ERROR!
+io.vertx.core.eventbus.ReplyException: DB_CONNECTION_ERRORintegrity constraint violation: NOT NULL check constraint; SYS_CT_10137 table: USER column: "password_salt"          <1>
+
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Errors:
+[ERROR]   PersistenceVerticleTest.testServerRegisterUserOverEventBus » Reply DB_CONNECTI...
+[INFO]
+[ERROR] Tests run: 2, Failures: 0, Errors: 1, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 3.720 s
+[INFO] Finished at: 2018-10-13T17:38:02-04:00
+[INFO] Final Memory: 22M/308M
+[INFO] ------------------------------------------------------------------------
+
+....
+
+<1>  We haven't implemented password hashing
+
+=== Implement Password Hashing
+
+Open PersistenceVerticle.  We need to update the "registeUser" method
+
+src/main/java/io/vertx/conduit/persistence/PersistenceVerticle.java
+[code,java]
+....
+
+package io.vertx.conduit.persistence;
+
+import io.vertx.conduit.model.User;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.jdbc.JDBCAuth;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.UpdateResult;
+
+import static io.vertx.conduit.ApplicationProps.*;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_LOGIN_QUERY;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_REGISTER_USER;
+import static io.vertx.conduit.persistence.DatabaseProps.*;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
+
+public class PersistenceVerticle extends AbstractVerticle {
+
+  private JDBCClient jdbcClient;
+
+  private JDBCAuth authProvider;
+
+
+  @Override
+  public void start(Future<Void> startFuture) throws Exception {
+
+    System.out.println(config().getString(DB_URL_KEY));
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put(DB_URL_KEY, config().getString(DB_URL_KEY, DB_URL_DEFAULT))
+      .put(DB_DRIVER_KEY, config().getString(DB_DRIVER_KEY, DB_DRIVER_DEFAULT))
+      .put(DB_USER_KEY, config().getString(DB_USER_KEY, DB_USER_DEFAULT))
+      .put(DB_POOL_SIZE_KEY, config().getInteger(DB_POOL_SIZE_KEY, DB_POOL_SIZE_DEFAULT)));
+
+    authProvider = JDBCAuth.create(vertx, jdbcClient);
+    authProvider.setAuthenticationQuery(SQL_LOGIN_QUERY);
+
+
+    EventBus eventBus = vertx.eventBus();
+    MessageConsumer<JsonObject> consumer = eventBus.consumer(PERSISTENCE_ADDRESS);
+    consumer.handler(message -> {
+
+      String action = message.body().getString(PERSISTENCE_ACTION);
+      System.out.println(action);
+
+      switch (action) {
+        case PERSISTENCE_ACTION_REGISTER:
+          registerUser(message);
+          break;
+        case PERSISTENCE_ACTION_LOGIN:
+          loginUser(message);
+          break;
+        default:
+          message.fail(1, "Unkown action: " + message.body());
+      }
+    });
+
+    startFuture.complete();
+
+  }
+
+  private void loginUser(Message<JsonObject> message) {
+
+    JsonObject userJson = new JsonObject(message.body().getString("user"));
+
+    JsonObject authInfo = new JsonObject()
+      .put("username", userJson.getString("email"))
+      .put("password", userJson.getString("password"));
+
+    String salt = authProvider.generateSalt();
+    String saltedPassword = authProvider.computeHash("jakejake", salt);
+
+    System.out.println(salt);
+    System.out.println(saltedPassword);
+
+
+    authProvider.authenticate(authInfo, ar -> {
+
+      if (ar.failed()) {
+        message.reply(
+          new JsonObject()
+            .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE)
+            .put(PERSISTENCE_OUTCOME_MESSAGE, ar.cause()));
+      }else{
+        jdbcClient.queryWithParams(
+          SQL_SELECT_USER_BY_EMAIL,
+          new JsonArray().add(userJson.getString("email")),
+          res -> {
+            if (res.failed()) {
+              message.reply(
+                new JsonObject()
+                  .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE)
+                  .put(PERSISTENCE_OUTCOME_MESSAGE, res.cause()));
+            }else{
+              ResultSet resultSet = res.result();
+              if (resultSet.getNumRows() == 0) {
+                message.reply(
+                  new JsonObject()
+                    .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_FAILURE)
+                    .put(PERSISTENCE_OUTCOME_MESSAGE, PersistenceErrorCodes.NOT_FOUND.message));
+              }else{
+                JsonArray rs = resultSet.getResults().get(0);
+                message.reply(
+                  new JsonObject()
+                    .put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
+              }
+            }
+          });
+      }
+
+    });
+  }
+
+  private void registerUser(Message<JsonObject> message) {
+
+    JsonObject userJson = new JsonObject(message.body().getString("user"));
+    User user = new User(userJson);
+
+    String salt = authProvider.generateSalt();          <1>
+    String saltedPassword = authProvider.computeHash(user.getPassword(), salt);          <2>
+    user.setPassword(saltedPassword);          <3>
+    user.setPassword_salt(salt);          <4>
+
+    jdbcClient.updateWithParams(SQL_REGISTER_USER, new JsonArray()
+      .add(user.getUsername())
+      .add(user.getEmail())
+      .add(user.getBio())
+      .add(user.getPassword())
+      .add(user.getPassword_salt())
+      , res -> {
+      if (res.succeeded()) {
+        UpdateResult updateResult = res.result();
+        System.out.println("No. of rows updated: " + updateResult.getUpdated());
+        if (updateResult.getUpdated() >= 1) {
+          message.reply(new JsonObject().put(PERSISTENCE_OUTCOME, PERSISTENCE_OUTCOME_SUCCESS));
+        }else{
+          message.fail(PersistenceErrorCodes.DB_INSERT_FAILURE.ordinal(), PersistenceErrorCodes.DB_INSERT_FAILURE  + res.cause().getMessage());
+        }
+      } else {
+        message.fail(PersistenceErrorCodes.DB_CONNECTION_ERROR.ordinal(), PersistenceErrorCodes.DB_CONNECTION_ERROR + res.cause().getMessage());
+      }
+
+    });
+  }
+
+}
+
+....
+
+<1>  The JDBC AuthProvider generates a salt for use to use
+<2>  The JDBC AuthProvider also hashes the password using the salt we just generated
+<3>  Set the hashed password into the User
+<4>  Set the salt for the JDBC AuthProvider to use
+
+Now open SQLQueries to update our query because we are now inserting one more value
+
+src/main/java/io/vertx/conduit/persistence/SQLQueries.java
+[code,java]
+....
+package io.vertx.conduit.persistence;
+
+public class SQLQueries {
+
+  public static final String SQL_REGISTER_USER = "insert into USER (\"username\",\"email\",\"bio\",\"password\", \"password_salt\") values (?, ?, ?, ?, ?);";          <1>
+  public static final String SQL_SELECT_USER_BY_EMAIL = "select * from USER where \"email\" = ?";
+  public static final String SQL_LOGIN_QUERY = "select \"password\", \"password_salt\" from USER where \"email\" = ?";
+}
+
+....
+
+<1>  Add "\"password_salt\"" and an extra "?" (be sure to escape the quotes)
+
+=== Update the PersistenceVerticleTest
+
+We are currently checking the message returned form the EventBus.  Let's add a check to make sure our newly registered user is in the database
+
+Add the following code to PersistenceVerticleTest;
+
+src/main/test/io/vertx/conduit/persistence/PersistenceVerticleTest.java
+[code,java]
+....
+
+package io.vertx.conduit.persistence;
+
+import io.vertx.conduit.model.User;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.junit5.Checkpoint;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import static io.vertx.conduit.ApplicationProps.*;
+import static io.vertx.conduit.TestProps.*;
+import static io.vertx.conduit.persistence.DatabaseProps.*;
+import static io.vertx.conduit.persistence.SQLQueries.SQL_SELECT_USER_BY_EMAIL;
+
+@DisplayName("Persistence Event Bus Tests")
+@ExtendWith(VertxExtension.class)
+public class PersistenceVerticleTest {
+
+  private JDBCClient jdbcClient;
+
+
+  @BeforeEach
+  void setUp(Vertx vertx, VertxTestContext testContext) {
+
+    jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST));
+
+    Flyway flyway = Flyway.configure().dataSource(DB_URL_TEST, DB_USER_TEST, null).load();
+    // Run the migration
+    flyway.migrate();
+
+    Checkpoint deploymentCheckpoint = testContext.checkpoint();
+
+    JsonObject eventBusDeploymentConfig = new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
+
+    vertx.deployVerticle(new PersistenceVerticle(), new DeploymentOptions().setConfig(eventBusDeploymentConfig), testContext.succeeding(id -> {
+      deploymentCheckpoint.flag();
+      Assertions.assertFalse(id.isEmpty());
+    }));
+
+    testContext.completeNow();
+  }
+
+  @Test
+  @DisplayName("Authenticate User Test")
+  @Timeout(10000)
+  void testJDBCAuthorizationOverEventBus(Vertx vertx, VertxTestContext testContext) {
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+
+    User user = new User("jake@jake.jake", "jakejake");
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_LOGIN)
+      .put("user", Json.encode(user));
+
+    vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
+      testContext.verify(() -> {
+        System.out.println(ar.body());
+        Assertions.assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+        replyCheckpoint.flag();
+        testContext.completeNow();
+      });
+
+    }));
+  }
+
+  @Test
+  @DisplayName("Register User Test")
+  @Timeout(10000)
+  void testServerRegisterUserOverEventBus(Vertx vertx, VertxTestContext testContext) {
+
+    Checkpoint replyCheckpoint = testContext.checkpoint();
+    Checkpoint verificationCheckpoint = testContext.checkpoint();
+
+    User user = new User("user1@user.com", null, "user1", "user1's bio", null, "password");
+
+    JsonObject message = new JsonObject()
+      .put(PERSISTENCE_ACTION, PERSISTENCE_ACTION_REGISTER)
+      .put("user", Json.encode(user));
+
+    JsonObject eventBusDeploymentConfig = new JsonObject()
+      .put(DB_URL_KEY, DB_URL_TEST)
+      .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
+      .put(DB_USER_KEY, DB_USER_TEST)
+      .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
+
+
+    vertx.eventBus().send(PERSISTENCE_ADDRESS, message, testContext.succeeding(ar -> {
+      testContext.verify(() -> {
+          System.out.println(ar.body());
+          Assertions.assertEquals(PERSISTENCE_OUTCOME_SUCCESS, ((JsonObject) ar.body()).getString("outcome"));
+          replyCheckpoint.flag();
+
+            jdbcClient.getConnection(conn -> {          <1>
+              SQLConnection connection = conn.result();
+              if (conn.failed()) {
+                testContext.failNow(conn.cause());
+              }else{
+                connection.queryWithParams(SQL_SELECT_USER_BY_EMAIL, new JsonArray().add(user.getEmail()), result ->{
+                  ResultSet set = result.result();
+                  JsonObject expectedUser = set.getRows().get(0);          <2>
+                  System.out.println(expectedUser);
+                  Assertions.assertNotNull(expectedUser);
+                  Assertions.assertNotNull(expectedUser.getString("password"));
+                  Assertions.assertNotNull(expectedUser.getString("password_salt"));          <3>
+                  Assertions.assertEquals("user1@user.com", expectedUser.getString("email"));
+                  verificationCheckpoint.flag();
+                });
+              }
+            });
+          });
+        }));
+  }
+
+}
+
+....
+
+<1>  Get a connection to the database
+<2>  The ResultSet is an ArrayList of JsonObjects.  We need the first one
+<3>  Verify that "password_salt" has a value (and a few other fields)
+
+=== Pass the Test
+
+You should now be able to pass all of the Test methods in PersistenceVerticleTest
+
+[code,shell]
+....
+
+mvn clean test -Dtest=PersistenceVerticleTest
+
+....
+
+Should be successful
+
+....
+
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.035 s - in io.vertx.conduit.persistence.PersistenceVerticleTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+....
