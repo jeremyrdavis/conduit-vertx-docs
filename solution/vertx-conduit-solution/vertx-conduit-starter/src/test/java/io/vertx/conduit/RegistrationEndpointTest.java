@@ -7,6 +7,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -30,6 +31,7 @@ public class RegistrationEndpointTest {
   @BeforeEach
   void setUp(Vertx vertx, VertxTestContext testContext) {
 
+
     jdbcClient = JDBCClient.createShared(vertx, new JsonObject()
       .put(DB_URL_KEY, DB_URL_TEST)
       .put(DB_DRIVER_KEY, DB_DRIVER_TEST)
@@ -46,13 +48,17 @@ public class RegistrationEndpointTest {
       .put(DB_USER_KEY, DB_USER_TEST)
       .put(DB_POOL_SIZE_KEY, DB_POOL_SIZE_TEST);
 
+    Checkpoint mainVerticleCheckpoint = testContext.checkpoint();
+    Checkpoint persistenceVerticleCheckpoint = testContext.checkpoint();
 
     vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
-      testContext.completeNow();
+      mainVerticleCheckpoint.flag();
     }));
     vertx.deployVerticle(new PersistenceVerticle(),new DeploymentOptions().setConfig(eventBusDeploymentConfig), testContext.succeeding(ar ->  {
-      testContext.completeNow();
+      persistenceVerticleCheckpoint.flag();
     }));
+
+    testContext.completeNow();
   }
 
   @AfterEach

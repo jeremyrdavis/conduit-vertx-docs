@@ -133,7 +133,7 @@ public class PersistenceVerticleTest {
 <9>  Flag the reply
 <10> End the test
 
-== Pass the Test (for a moment anyway)
+== Pass the Persistence Test (for a moment anyway)
 
 [code,java]
 ....
@@ -183,8 +183,88 @@ public class PersistenceVerticle extends AbstractVerticle {
   }
 }
 
+....
+
+=== And Pass the Endpoint Test
+
+Add the call to the EventBus to the RegistrationEndpointTest (and spin up the PersistenceVerticle):
+
+src/main/test/io/vertx/conduit/RegistrationEndpointTest.java
+[code,java]
+....
+
+package io.vertx.conduit;
+
+import io.vertx.conduit.model.User;
+import io.vertx.conduit.persistence.PersistenceVerticle;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.junit5.Timeout;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import static io.vertx.conduit.TestProps.*;
+import static io.vertx.conduit.persistence.DatabaseProps.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@DisplayName("Registration Endpoint Tests")
+@ExtendWith(VertxExtension.class)
+public class RegistrationEndpointTest {
+
+  private JDBCClient jdbcClient;
+
+  @BeforeEach          <1>
+  void setUp(Vertx vertx, VertxTestContext testContext) {
+
+    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> {
+      testContext.completeNow();
+    }));
+    vertx.deployVerticle(new PersistenceVerticle(), testContext.succeeding(ar ->  {          <2>
+      testContext.completeNow();
+    }));
+  }
+
+  @AfterEach
+  void tearDown(Vertx vertx, VertxTestContext testContext) {          <3>
+    vertx.close();
+    testContext.completeNow();
+  }
+
+
+  @Test @Timeout(5000)
+  public void testRegisteringNewUser(Vertx vertx, VertxTestContext testContext){
+
+      WebClient webClient = WebClient.create(vertx);
+
+      webClient.post(8080, "localhost", "/api/users")
+        .sendJsonObject(new JsonObject()
+          .put("user", new JsonObject()
+            .put("username", "User2")
+            .put("email", "user2@user2.user2")
+            .put("password", "user2user2")
+          ), testContext.succeeding(response ->  testContext.verify(()->{
+            assertEquals(201, response.statusCode());
+            testContext.completeNow();
+          })));
+
+  }
+
+}
 
 ....
+
+<1>  Move the initialization and clean up code into @BeforeEach and @AfterEach methods
+<2>  Deploy the PersistenceVerticle 
+<3>  Clean up
 
 == Conclusion
 
