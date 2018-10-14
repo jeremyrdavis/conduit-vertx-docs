@@ -130,7 +130,6 @@ public class PersistenceVerticle extends AbstractVerticle {
     jdbcClient.updateWithParams(SQL_REGISTER_USER, new JsonArray()
       .add(user.getUsername())
       .add(user.getEmail())
-      .add(user.getBio())
       .add(user.getPassword())
       .add(user.getPassword_salt())
       , res -> {
